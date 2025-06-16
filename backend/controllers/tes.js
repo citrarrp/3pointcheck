@@ -2,13 +2,25 @@ import moment from "moment-timezone";
 import Tes from "../models/TesModel"; // ganti sesuai path sebenarnya
 import trackingDelv from "../models/TrackingDelvModel"; // ganti sesuai path sebenarnya
 
+// const defaultSteps = {
+//   "Received Order": "RECEIVING E-KBN",
+//   "Waiting Post": "WAITING POST",
+//   "Start Preparation (Pulling)": "PULLING (60')",
+//   Inspection: "PULLING (60')",
+//   "Finish Preparation": "WRAPPING",
+//   "Ready to Shipping Area": "WRAPPING",
+//   "Arrived Truck": "LOADING TRUCK (30')",
+//   "Departure Truck": "TRUCK OUT",
+// };
+
 const defaultSteps = {
   "Received Order": "RECEIVING E-KBN",
   "Waiting Post": "WAITING POST",
   "Start Preparation (Pulling)": "PULLING (60')",
   Inspection: "PULLING (60')",
   "Finish Preparation": "WRAPPING",
-  "Ready to Shipping Area": "WRAPPING",
+  "Ready to Shipping Area": "WAITING SHIPPING AREA",
+  "Create Surat Jalan": "LOADING TRUCK (30')",
   "Arrived Truck": "LOADING TRUCK (30')",
   "Departure Truck": "TRUCK OUT",
 };
@@ -66,21 +78,38 @@ export const createData = async (req, res) => {
 
       processedDnNumbers.add(dnNumber);
 
-      for (const item of tracking) {
-        if ((dataItem.cycle || 1) === (item.cycle || 1)) {
-          const stepKey = Object.keys(defaultSteps).find(
-            (key) => defaultSteps[key] === item.processName
-          );
+      // for (const item of tracking) {
+      //   if ((dataItem.cycle || 1) === (item.cycle || 1)) {
+      //     const stepKey = Object.keys(defaultSteps).find(
+      //       (key) => defaultSteps[key] === item.processName
+      //     );
 
-          result.push({
-            cycle: dataItem.cycle || 1,
-            dnNumber,
-            waktu: item.waktu,
-            durasi: item.waktu,
-            step: stepKey,
-            waktuDelv: dataItem.delivery_date,
-          });
-        }
+      //     result.push({
+      //       cycle: dataItem.cycle || 1,
+      //       dnNumber,
+      //       waktu: item.waktu,
+      //       durasi: item.waktu,
+      //       step: stepKey,
+      //       waktuDelv: dataItem?.delivery_date,
+      //     });
+      //   }
+      // }
+
+      for (const [stepKey, processName] of Object.entries(defaultSteps)) {
+        const item = tracking.find(
+          (trackItem) =>
+            (dataItem.cycle || 1) === (trackItem.cycle || 1) &&
+            trackItem.processName === processName
+        );
+
+        result.push({
+          cycle: dataItem.cycle || 1,
+          dnNumber,
+          waktu: item.waktu, // pakai optional chaining kalau tidak ketemu
+          durasi: item.waktu,
+          step: stepKey,
+          waktuDelv: dataItem?.delivery_date,
+        });
       }
     }
 
@@ -146,7 +175,6 @@ export const createData = async (req, res) => {
     }
 
     await Promise.all(trackingUpdates);
-    console.log("Semua tracking berhasil disimpan.");
     res.status(201).json({ success: true, data: newDataCustomer });
   } catch (error) {
     console.error("Error in Create Customer:", error.message);
@@ -157,9 +185,3 @@ export const createData = async (req, res) => {
     });
   }
 };
-
-
-
-
-
-

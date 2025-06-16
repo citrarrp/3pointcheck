@@ -37,7 +37,7 @@ function Excel() {
   const fetchSODDiagram = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:3000/sodDiagram/api/sod/",
+        "http://192.168.56.1:3000/sodDiagram/api/sod/",
         {
           headers: {
             "Content-Type": "application/json",
@@ -219,7 +219,6 @@ function Excel() {
         ? prev.filter((i) => i !== column)
         : [...prev, column]
     );
-    console.log(column);
   };
 
   const handleSeparatorChange = (e) => {
@@ -273,7 +272,6 @@ function Excel() {
 
       const promises = Object.entries(groupedByCustomer).map(
         async ([customer, _]) => {
-          console.log(customer, "row custoemr");
           const dataSOD = await fetchSODDiagram();
           const filteredDataSOD = dataSOD.filter((item) => {
             const cleanCustomer = customer
@@ -286,7 +284,6 @@ function Excel() {
             return cleanCustomer.includes(cleanCustomerName);
           });
 
-          console.log("filter", filteredDataSOD, filteredData);
           const formatValue = (val) => {
             if (val instanceof Date && !isNaN(val)) {
               return moment(val).tz("Asia/Jakarta").format("DDMMYYYY");
@@ -326,11 +323,9 @@ function Excel() {
               );
             })
             .map(([_, row]) => {
-              console.log(selectedColumns, "tes customer");
               return (
                 selectedColumns
                   .filter((_, index) => {
-                    console.log(index, _);
                     return (index + 1) % 2 === 0;
                   })
                   .map((col) =>
@@ -368,7 +363,7 @@ function Excel() {
             }
           });
 
-          console.log(filteredData, selectedData, "data filter");
+          // console.log(filteredData, selectedData, "data filter");
 
           const kolomSelected = Object.entries(groupedByCustomer).map(
             ([customerName, rows]) => {
@@ -477,7 +472,6 @@ function Excel() {
             uniquePartName,
             tracking: filteredDataSOD,
           };
-          console.log(payload, "payload");
 
           const res = await fetch(
             `${import.meta.env.VITE_BACKEND_URL}/api/data/`,

@@ -29,16 +29,16 @@ export default function ScanFinishPage() {
   //     setScanResult(decodedText);
   //     console.log(decodedResult);
 
-  const onNewScanResult = (decodedText, decodedResult) => {
-    try {
-      console.log("App [result]", decodedResult);
-      setScanResult(decodedText);
-      console.log(decodedResult);
-    } catch (error) {
-      console.log("Bukan JSON valid, hasil mentah:", error);
-      setScanResult("");
-    }
-  };
+  // const onNewScanResult = (decodedText, decodedResult) => {
+  //   try {
+  //     console.log("App [result]", decodedResult);
+  //     setScanResult(decodedText);
+  //     console.log(decodedResult);
+  //   } catch (error) {
+  //     console.log("Bukan JSON valid, hasil mentah:", error);
+  //     setScanResult("");
+  //   }
+  // };
 
   //   try {
   //     const parsed = JSON.parse(decodedText);
@@ -85,7 +85,7 @@ export default function ScanFinishPage() {
           <div className="flex items-center">
             <button
               className="px-5 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition"
-              onSubmit={() => submitScan(scanResult)}
+              onClick={() => submitScan(scanResult)}
             >
               Cek Kode Verifikasi
             </button>
@@ -104,18 +104,18 @@ export default function ScanFinishPage() {
         {/* )} */}
 
         <div className="text-center my-6">
-          <h2 className="text-xl font-semibold mb-2">Hasil Scan:</h2>
-          {scanResult ? (
-            <div className="text-left bg-gray-100 p-4 rounded-md shadow-inner">
-              <h3>{result}</h3>
-            </div>
+          {scanResult && result.length > 0 ? (
+            <>
+              <h2 className="text-xl font-semibold mb-2">Hasil Scan:</h2>
+              <div className="text-left bg-gray-100 p-4 rounded-md shadow-inner">
+                <h3>{result}</h3>
+              </div>
+            </>
           ) : (
-            <p className="text-gray-600">
-              {scanResult || "Belum ada hasil scan."}
-            </p>
+            <p className="text-gray-600">{"Belum ada hasil scan."}</p>
           )}
         </div>
-        {scanResult && (
+        {scanResult && result.length > 0 && (
           <div className="flex justify-center">
             <button
               onClick={handleReset}

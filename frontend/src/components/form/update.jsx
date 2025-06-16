@@ -307,8 +307,8 @@ function UpdateForm() {
   useEffect(() => {
     const fetchExistingData = async () => {
       if (customerList.length === 0) return;
-
       setIsLoading(true);
+      console.log(customerList, "baru");
       try {
         const promises = customerList.map(async (customer) => {
           const { data } = await api.get(
@@ -343,7 +343,7 @@ function UpdateForm() {
   const fetchSODDiagram = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:3000/sodDiagram/api/sod/",
+        "http://192.168.56.1:3000/sodDiagram/api/sod/",
         {
           headers: {
             "Content-Type": "application/json",
@@ -366,6 +366,7 @@ function UpdateForm() {
 
     const customers = nameWithoutExt.split("&").map((name) => name.trim());
     setCustomerList(customers);
+    console.log(customers);
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -447,6 +448,7 @@ function UpdateForm() {
           "data customer",
           customerList
         );
+        console.log(existingCustomersData, "contoh ada");
         const customerData = existingCustomersData.find((c) =>
           c.data.nama.toLowerCase().includes(customer.toLowerCase())
         );
@@ -457,24 +459,51 @@ function UpdateForm() {
         }
 
         const filteredData = excelData.filter((row) => {
-          const customerFieldValue =
-            row[selectedCustomerCol]?.toString().toLowerCase() || "";
-          return customerFieldValue.includes(customer.toLowerCase());
+          const customerFieldValue = row[selectedCustomerCol]
+            ?.toString()
+            .toLowerCase();
+
+          return (
+            customerFieldValue.includes(customer.toLowerCase()) ||
+            customerFieldValue
+              .replace(/-/g, " ")
+              .includes(customer.toLowerCase())
+          );
         });
 
         console.log(filteredData, "tes");
-        const separator = customerData.data.separator || "-";
+        const separator = customerData.data.separator;
 
-        const selectedData = filteredData.map((row) =>
-          selectedColumns
+        // const selectedData = filteredData.map((row) =>
+
+        //   selectedColumns
+        //     .map((col) => formatValue(row[col]))
+        //     .map((val) => extractColon(val))
+        //     .join(separator)
+        // );
+
+        const selectedData = filteredData.map((row) => {
+          const values = selectedColumns
             .map((col) => formatValue(row[col]))
-            .map((val) => extractColon(val))
-            .join(separator)
-        );
+            .map((val) => extractColon(val));
+
+          return separator !== "" || undefined
+            ? values.join(separator)
+            : values.join(""); // join("") gabung tanpa spasi
+        });
+
+        // const selectedData = filteredData.map((row) =>
+        //   selectedColumns
+        //     .map((col) => {
+        //       const val = formatValue(row[col]);
+        //       return separator !== "" ? extractColon(val) : val;
+        //     })
+        //     .join(separator)
+        // );
 
         const KolomSelected = filteredData.map((row) =>
           Object.entries(mapping).reduce((acc, [schema, excelCol]) => {
-            console.log(excelCol);
+            console.log(excelCol, "kolom excel");
             if (!Object.hasOwn(mapping, "delivery_cycle")) {
               acc["delivery_cycle"] = 1; // Nilai default 1
             }
@@ -509,6 +538,8 @@ function UpdateForm() {
           matchedCycle: stepCycle,
           // selectedData,
         };
+
+        console.log(KolomSelected, "isi yanga dikirm", payload);
         // console.log(payload, "ini");
         const res = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/data/${

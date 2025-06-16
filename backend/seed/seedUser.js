@@ -39,10 +39,8 @@ const seed = async () => {
 
     const existing = await user.countDocuments();
     if (existing > 0) {
-      console.log("user sudah ada. Skip seeding.");
     } else {
       await user.insertMany(seedData);
-      console.log("Seeding user berhasil!");
     }
 
     mongoose.disconnect();

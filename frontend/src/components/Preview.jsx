@@ -140,7 +140,6 @@ const Cetaklabel = ({ data, qty, date, code, sequenceFirst, separator }) => {
   
 
   const { register, handleSubmit, watch } = useForm();
-  console.log(data, "selecte");
   // const handlePrint = useReactToPrint({
   //   content: () => componentRef.current,
   //   onPrintError: () => alert("There is an error when printing"),
@@ -159,7 +158,7 @@ const Cetaklabel = ({ data, qty, date, code, sequenceFirst, separator }) => {
   const sequenceNo = watch("sequenceNo") || 0;
   const PIC = watch("PIC") || null;
   const shift = watch("shift") || null;
-  console.log(sequenceFirst, "seq");
+  // console.log(sequenceFirst, "seq");
 
   const onSubmit = () => {
     setShouldPrint(true);
@@ -182,7 +181,6 @@ const Cetaklabel = ({ data, qty, date, code, sequenceFirst, separator }) => {
 
   // console.log(matchingIndexes);
   // const matchedKolom = matchingIndexes.map((i) => data?.kolomSelected?.data[i]);
-  console.log(users, "user");
   // const SelectedColumn = [...new Set(matchedKolom)];
   // console.log(matchingIndexes, matchedKolom, SelectedColumn, "unik ini");
   return (

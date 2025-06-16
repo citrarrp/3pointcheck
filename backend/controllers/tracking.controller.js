@@ -9,15 +9,15 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
     const { customerId, tanggal, dnNumber, persentase, status, shift } =
       req.body;
 
-    console.log(
-      customerId,
-      tanggal,
-      dnNumber,
-      persentase,
-      status,
-      shift,
-      "request"
-    );
+    // console.log(
+    //   customerId,
+    //   tanggal,
+    //   dnNumber,
+    //   persentase,
+    //   status,
+    //   shift,
+    //   "request"
+    // );
     if (!customerId || !tanggal || !dnNumber) {
       return res.status(400).json({
         message: "customerId, tanggal, dan dnNumber harus diisi",
@@ -40,7 +40,7 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
       nama: "Finish Preparation",
     });
 
-    console.log(existingData);
+  
     if (!existingData) {
       return res.status(404).json({
         message: "Data tidak ditemukan",
@@ -49,7 +49,7 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
     }
 
     // Hitung waktu aktual dan delay
-    console.log(existingData, typeof existingData.waktuStandar, "wakti");
+    // console.log(existingData, typeof existingData.waktuStandar, "wakti");
 
     const waktuAktual = moment().tz("Asia/Jakarta");
     const waktuStandar = moment(new Date(existingData.waktuStandar)).tz(
@@ -65,7 +65,7 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
     // );
 
     const diffMinutes = waktuAktual.diff(waktuStandar, "minutes");
-    console.log(waktuAktual, waktuStandar, diffMinutes);
+    // console.log(waktuAktual, waktuStandar, diffMinutes);
 
     let statusWaktu = existingData.status;
     let verificationCode = null;
@@ -190,7 +190,7 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
 
     const response = {
       message: "Data berhasil diupdate",
-      data: updatedData,
+      data: dnNumber,
     };
 
     if (status == "done") {
@@ -213,7 +213,7 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
         response.verificationCode = null;
       }
     }
-    console.log(response);
+
     res.status(200).json(response);
   } catch (error) {
     console.error("Error updating tracking data:", error);
@@ -249,7 +249,6 @@ export const postFinishPreparation = async (req, res) => {
       nama: "Ready to Shipping Area",
     });
 
-    console.log(existingData);
     if (!existingData) {
       return res.status(404).json({
         message: "Data tidak ditemukan",
@@ -376,7 +375,7 @@ export const getDatabyIdCycle = async (req, res) => {
   const nextDay = new Date(targetDate);
   nextDay.setDate(targetDate.getDate() + 1);
 
-  console.log(tanggal, new Date());
+  // console.log(tanggal, new Date());
   try {
     const trackingCustDN = await trackingDelv.find({
       customerId: id,
@@ -475,7 +474,7 @@ export const getCycleDatabyId = async (req, res) => {
 
 export const getDatabyIdCycleDN = async (req, res) => {
   const { id, cycleNumber, dn_number } = req.params;
-  console.log(req.user, "RES", id);
+  // console.log(req.user, "RES", id);
 
   try {
     const trackingCustDN = await trackingDelv.find({
@@ -518,8 +517,7 @@ export const getDataTracking = async (req, res) => {
         // cycleNumber: parseInt(cycleNumber),
         filter
       )
-      .populate("customerId", "nama")
-      .lean();
+      .populate("customerId", "nama");
 
     if (!trackingAll || trackingAll.length === 0) {
       return res

@@ -8,7 +8,7 @@ const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log("Token in AuthProvider:", token);
+    // console.log("Token in AuthProvider:", token);
     const fetchUser = async () => {
       if (token) {
         api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
@@ -110,12 +110,12 @@ const AuthProvider = ({ children }) => {
         password,
       });
       const { accessToken, existingUser } = res.data.data;
-      console.log(res.data, accessToken, existingUser);
+      // console.log(res.data, accessToken, existingUser);
       setToken(accessToken);
       setUser(existingUser);
       localStorage.setItem("accessToken", accessToken);
       localStorage.getItem("accessToken");
-      console.log(accessToken);
+      // console.log(accessToken);
       api.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
     } catch (error) {
       throw new Error(error.response?.data?.message || "Login failed");

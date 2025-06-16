@@ -61,10 +61,8 @@ const seed = async () => {
 
     const existing = await trucks.countDocuments();
     if (existing > 0) {
-      console.log("absensi sudah ada. Skip seeding.");
     } else {
       await trucks.insertMany(seedData);
-      console.log("Seeding user berhasil!");
     }
 
     mongoose.disconnect();

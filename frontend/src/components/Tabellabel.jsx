@@ -91,7 +91,7 @@ const PDFTable = ({
   pembagi,
 }) => {
   if (!data || data.length === 0) return <p>Data tidak tersedia</p>;
-  console.log(shift, staff, sequence, FirstSeq, pembagi);
+  // console.log(shift, staff, sequence, FirstSeq, pembagi);
 
   // const kolomSelected = data?.kolomSelected[0] || {};
   // console.log(data, 'kolom', selectedData)
@@ -138,9 +138,9 @@ const PDFTable = ({
           (i) => i.dn_number === dnNumber.dn_number
         ); */}
       {Array.from({ length: sequence }, (_, idx) => {
-        console.log(data[0].delivery_date, "tanggal");
+        // console.log(data[0].delivery_date, "tanggal");
         const currentSeq = parseInt(FirstSeq) + idx + 1;
-        console.log(currentSeq, FirstSeq);
+        // console.log(currentSeq, FirstSeq);
         const isNewPage = idx % 3 === 0 && idx !== 0;
         return (
           <table

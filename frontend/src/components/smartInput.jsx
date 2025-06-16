@@ -6,9 +6,10 @@ import { useParams } from "react-router";
 import api from "../utils/api";
 import QRCode from "react-qr-code";
 import axios from "axios";
+import { MdFileCopy } from "react-icons/md";
 export default function SmartInputLoop() {
   const { id } = useParams();
-  console.log(id);
+  // console.log(id);
   const [rows, setRows] = useState(() =>
     Array.from({ length: 20 }, () => ({ kanban: "", labelSupplier: "" }))
   );
@@ -27,6 +28,8 @@ export default function SmartInputLoop() {
   const [shift, setShift] = useState(null);
   const [waktuAktual, setWaktuAktual] = useState(null);
   const [qrCode, setqrCode] = useState(null);
+  const [copied, setCopied] = useState(false);
+
   const [kanban, setKanban] = useState(true);
   useEffect(() => {
     const fetchData = async () => {
@@ -38,11 +41,9 @@ export default function SmartInputLoop() {
         const KolomSelected = data.data.kolomSelected;
         setSelectedData(data.data.kolomSelected.selectedData);
         setCreatedAtList(
-          kanban
-            ? KolomSelected.map((item) => item.createdAt)
-            : KolomSelected.flatMap((kolom) =>
-                kolom.data.map((item) => item.delivery_date)
-              )
+          KolomSelected.flatMap((kolom) =>
+            kolom.data.map((item) => item.delivery_date)
+          )
         );
         setFullData(data.data.kolomSelected);
         setKanban(data.data.kanban);
@@ -57,9 +58,8 @@ export default function SmartInputLoop() {
   const fetchShift = async () => {
     try {
       const res = await axios.get(
-        `http://localhost:3000/sodDiagram/api/shift/`
+        `http://192.168.56.1:3000/sodDiagram/api/shift/`
       );
-      console.log(res);
       const savedInputs = res.data.data;
       return savedInputs;
     } catch (error) {
@@ -67,10 +67,18 @@ export default function SmartInputLoop() {
     }
   };
 
+  const handleCopy = () => {
+    if (qrCode) {
+      navigator.clipboard.writeText(qrCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
   const checkProsesSekarang = useCallback(async () => {
     const dataWaktu = await fetchShift();
     const now = moment.utc();
-    console.log(dataWaktu, now, "sekarang");
+    // console.log(dataWaktu, now, "sekarang");
 
     return dataWaktu.find((item) => {
       const mulai = moment.utc(
@@ -103,7 +111,6 @@ export default function SmartInputLoop() {
       try {
         const dateStr = moment(date).format("YYYY-MM-DD");
         const res = await api.get(`/inputQR?date=${dateStr}&customerId=${id}`);
-        console.log(res);
         const savedInputs = res.data.data;
 
         if (savedInputs && savedInputs.length > 0) {
@@ -149,7 +156,6 @@ export default function SmartInputLoop() {
   );
 
   const handleClickDate = async (Date) => {
-    console.log("date");
     setSelectedDate(Date);
 
     if (!kanban) {
@@ -163,13 +169,13 @@ export default function SmartInputLoop() {
       if (itemQTY) {
         setData(itemQTY || []);
         setDataLoaded(true);
-        console.log(itemQTY, "ITEM", fullData);
+        // console.log(itemQTY, "ITEM", fullData);
         fullData.flatMap((kolom) =>
           kolom.data.map((item) => console.log(item))
         );
         const indicesToSelect = itemQTY.map((item) => item.index);
 
-        console.log(indicesToSelect);
+        // console.log(indicesToSelect);
 
         setSelectedData(
           fullData.flatMap(
@@ -179,12 +185,12 @@ export default function SmartInputLoop() {
               ) || []
           )
         );
-        console.log(
-          Data.filter((_, index) => indicesToSelect.includes(index)) || []
-        );
+        // console.log(
+        //   Data.filter((_, index) => indicesToSelect.includes(index)) || []
+        // );
         await fetchSavedInputs(Date);
       } else {
-        console.log("No matching data for selected date");
+        // console.log("No matching data for selected date");
         setData([]);
         setDataLoaded(false);
         setRows(
@@ -197,14 +203,14 @@ export default function SmartInputLoop() {
         moment(dataItem.createdAt).isSame(Date, "day")
       );
       if (matchedItem) {
-        console.log("matched item:", matchedItem);
+        // console.log("matched item:", matchedItem);
 
         setData(matchedItem.data || []);
         setSelectedData(matchedItem.selectedData || []);
         setDataLoaded(true);
         await fetchSavedInputs(Date);
       } else {
-        console.log("No matching data for selected date");
+        // console.log("No matching data for selected date");
         setData([]);
         setSelectedData([]);
         setDataLoaded(false);
@@ -275,8 +281,8 @@ export default function SmartInputLoop() {
           );
         }
 
-        console.log(res, "kode");
-
+        // console.log(res, "kode");
+        
         setqrCode(res.data.verificationCode || res.data.data.verificationCode);
         setShift(res.data.shift);
         setWaktuAktual(res.data.waktuAktual);
@@ -298,7 +304,7 @@ export default function SmartInputLoop() {
 
   const updateODStatus = useCallback(
     async (order_no, sudahInputOD, totalKanban) => {
-      console.log(sudahInputOD, totalKanban, "data masuk");
+      // console.log(sudahInputOD, totalKanban, "data masuk");
       const percent =
         sudahInputOD === 0 ? 0 : Math.round((sudahInputOD / totalKanban) * 100);
 
@@ -315,7 +321,7 @@ export default function SmartInputLoop() {
         // Jika dua kondisi terpenuhi
         if (sudahInputOD === 1 && totalKanban - sudahInputOD === 0) {
           const proses = await checkProsesSekarang();
-          console.log(proses, " shift");
+   
           const currentShift = proses?.kode_shift || "-";
 
           res = await axios.put(
@@ -358,7 +364,7 @@ export default function SmartInputLoop() {
           );
         }
 
-        console.log(res, "kode");
+        // console.log(res, "kode");
 
         setqrCode(res.data.verificationCode || res.data.data.verificationCode);
         setShift(res.data.shift);
@@ -381,41 +387,41 @@ export default function SmartInputLoop() {
 
   const generateSummaryTable = useCallback(async () => {
     if (!dataLoaded) return;
-    console.log("ini table kanban true");
+    // console.log("ini table kanban true");
     const totalMap = {};
     Data.forEach((item) => {
       const dn = item.dn_number;
       totalMap[dn] = (totalMap[dn] || 0) + 1;
-      console.log(dn, totalMap[dn]);
+      // console.log(dn, totalMap[dn]);
     });
 
     const sisaMap = {};
     rows.forEach((row, index) => {
       if (!validList[index]) return;
 
-      console.log(selectedData, "akses");
+      // console.log(selectedData, "akses");
       selectedData.forEach((item, index) => {
-        console.log(
-          `Index ${index}:`,
-          item,
-          "=>",
-          item.split(/\s+/).some((word) => console.log(word))
-        );
+        // console.log(
+        //   `Index ${index}:`,
+        //   item,
+        //   "=>",
+        //   item.split(/\s+/).some((word) => console.log(word))
+        // );
       });
 
       const foundIndex = Data.findIndex((item) => {
-        console.log("masuk sini", row.kanban?.toLowerCase());
+        // console.log("masuk sini", row.kanban?.toLowerCase());
         return row.kanban?.toLowerCase().includes(item.dn_number.toLowerCase());
       });
 
-      console.log(foundIndex, selectedData, row.kanban, "contoh");
+      // console.log(foundIndex, selectedData, row.kanban, "contoh");
 
       if (foundIndex !== -1) {
         const unique = selectedData[foundIndex];
         if (unique) {
           sisaMap[Data[foundIndex].dn_number] =
             (sisaMap[Data[foundIndex].dn_number] || 0) + 1;
-          console.log(String(Data[foundIndex].dn_number), "dn");
+          // console.log(String(Data[foundIndex].dn_number), "dn");
         }
       }
     });
@@ -423,14 +429,14 @@ export default function SmartInputLoop() {
     const dnNumbers = Object.keys(totalMap);
     let allClosed = true;
 
-    console.log(dnNumbers, "kenap");
+    // console.log(dnNumbers, "kenap");
 
     const table = dnNumbers.map((dn) => {
       const total = totalMap[dn];
       const sisaInput = sisaMap[dn] || 0;
       const sisa = total - sisaInput;
 
-      console.log(sisaInput, sisa, "sisa input", dn, "aoa");
+      // console.log(sisaInput, sisa, "sisa input", dn, "aoa");
 
       let status = "Closed";
       if (sisa > 0) {
@@ -456,45 +462,48 @@ export default function SmartInputLoop() {
 
   const generateSummaryTableNoKanban = useCallback(async () => {
     if (!dataLoaded) return;
-    console.log("ini table no kanban");
+
     const totalMap = {};
     const jumlahQTY = {};
     Data.forEach((item) => {
-      console.log(item, Data);
+      // console.log(item, Data);
       const dn = item.dn_number;
       const job = item.job_no;
       totalMap[dn + "," + job] =
-        (totalMap[dn + "," + job] || 0) + Number(item.qtyKanban);
+        (totalMap[dn + "," + job] || 0) +
+        Number(item[`order_(pcs)`] / item.qty);
       jumlahQTY[dn + "," + job] =
         (jumlahQTY[dn + "," + job] || 0) + Number(item[`order_(pcs)`]);
-      console.log(dn, totalMap[dn + "," + job], "dn");
+      // console.log(dn, totalMap[dn + "," + job], "dn");
     });
     setValidKanban(totalMap);
     setJumlahOrder(jumlahQTY);
 
+    // console.log(jumlahQTY, totalMap, "qty");
+
     const sisaMap = {};
     rows.forEach((row, index) => {
-      console.log(validList[index], "masuk rows");
+      // console.log(validList[index], "masuk rows");
       if (!validList[index]) return;
 
-      console.log("ke cari index");
+      // console.log("ke cari index");
       const foundIndex = Data.findIndex((item) =>
         // row.kanban?.toLowerCase().includes(item.dn_number.toLowerCase()) &&
         row.kanban?.toLowerCase().includes(item.job_no.toLowerCase())
       );
 
-      console.log(foundIndex);
+      // console.log(foundIndex);
 
-      console.log(foundIndex, row.kanban, "contoh");
+      // console.log(foundIndex, row.kanban, "contoh");
 
       if (foundIndex !== -1) {
-        console.log(foundIndex);
+        // console.log(foundIndex);
         sisaMap[`${Data[foundIndex].dn_number},${Data[foundIndex].job_no}`] =
           (sisaMap[
             `${Data[foundIndex].dn_number},${Data[foundIndex].job_no}`
           ] || 0) + 1;
 
-        console.log(String(Data[foundIndex].dn_number), "dn sisa", sisaMap);
+        // console.log(String(Data[foundIndex].dn_number), "dn sisa", sisaMap);
       }
     });
 
@@ -503,10 +512,11 @@ export default function SmartInputLoop() {
 
     const table = dnNumbersKanban.map((unique) => {
       const total = totalMap[unique];
+      // console.log(totalMap[unique], unique, "unik");
       const sisaInput = sisaMap[unique] || 0;
       const sisa = total - sisaInput;
 
-      console.log(sisaInput, sisa, "sisa input");
+      // console.log(sisaInput, sisa, "sisa input");
 
       let status = "Closed";
       if (sisa > 0) {
@@ -529,7 +539,7 @@ export default function SmartInputLoop() {
         };
       }
 
-      console.log(dnNumbersKanban, "kenap", totalMap, sisaMap);
+      // console.log(dnNumbersKanban, "kenap", totalMap, sisaMap);
       return {
         dn_number: unique,
         jumlah_order: jumlahQTY[unique],
@@ -551,7 +561,7 @@ export default function SmartInputLoop() {
     }
   }, [validList, generateSummaryTable, kanban, generateSummaryTableNoKanban]);
 
-  console.log("summary", summaryTable, validList);
+  // console.log("summary", summaryTable, validList);
 
   const handleInput = async (index, field, value) => {
     const newValue = value.trim();
@@ -580,10 +590,10 @@ export default function SmartInputLoop() {
 
       if (!found) {
         isValid = false;
-        console.log("huhu");
+        // console.log("huhu");
       }
 
-      console.log(found);
+      // console.log(found);
 
       const dnFound = Data.find(
         (d) =>
@@ -594,7 +604,7 @@ export default function SmartInputLoop() {
       );
       if (!dnFound) {
         isValid = false;
-        console.log("ga ketemu");
+        // console.log("ga ketemu");
       }
     }
 
@@ -635,7 +645,7 @@ export default function SmartInputLoop() {
         );
 
         const result = await res.json();
-        console.log("Submitted row:", changedRow, "Result:", result);
+        // console.log("Submitted row:", changedRow, "Result:", result);
       }
     } catch (err) {
       console.error("Failed to save input:", err);
@@ -677,7 +687,7 @@ export default function SmartInputLoop() {
 
     const A = updatedRows[index].kanban.toLowerCase().trim();
     let isValid = false;
-    console.log(Data, fullData);
+    // console.log(Data, fullData);
     // const dnFound = Data.find((d) => {
     //   console.log(
     //     d.dn_number,
@@ -694,10 +704,9 @@ export default function SmartInputLoop() {
     //   );
     // });
 
-    console.log(selectedData, "select");
+    // console.log(selectedData, "select");
 
     const found = selectedData[0].split(",").findIndex((d) => {
-      console.log(d, A);
       return A.includes(d?.toLowerCase().trim());
     });
 
@@ -707,10 +716,10 @@ export default function SmartInputLoop() {
 
     if (found !== -1) {
       isValid = true;
-      console.log(found, "kesini");
+      // console.log(found, "kesini");
       jumlahKanban[Data[found].dn_number] =
         (jumlahKanban[Data[found].dn_number] || 0) + 1;
-      console.log(String(Data[found].dn_number), "dn");
+      // console.log(String(Data[found].dn_number), "dn");
 
       // Data.forEach((item) => {
       //   const dn = item.dn_number;
@@ -729,7 +738,7 @@ export default function SmartInputLoop() {
     }
     const updatedValidList = [...validList];
     updatedValidList[index] = isValid;
-    console.log(updatedValidList, "valid ksh");
+    // console.log(updatedValidList, "valid ksh");
     setValidList(updatedValidList);
 
     const changedRow = {
@@ -764,7 +773,7 @@ export default function SmartInputLoop() {
         );
 
         const result = await res.json();
-        console.log("Submitted row:", changedRow, "Result:", result);
+        // console.log("Submitted row:", changedRow, "Result:", result);
       }
     } catch (err) {
       console.error("Failed to save input:", err);
@@ -807,7 +816,7 @@ export default function SmartInputLoop() {
     (createdAt) => new Date(moment(createdAt).format("YYYY-MM-DD"))
   );
 
-  console.log(selectedData, createdAtList, Data, "creted");
+  // console.log(selectedData, createdAtList, Data, "creted");
 
   return (
     <div className="p-4">
@@ -828,17 +837,30 @@ export default function SmartInputLoop() {
       </div>
 
       {allDnClosed && qrCode && dataLoaded && (
-        <div className="mb-6 p-4 border rounded-lg bg-white flex flex-col items-center">
+        <div className="items-center">
           <h2 className="text-lg font-semibold mb-2">
             Scan QR Code untuk verifikasi
           </h2>
-          <QRCode
-            size={150}
-            style={{ height: "auto" }}
-            value={qrCode}
-            viewBox={`0 0 256 256`}
-          />
-          <p>{qrCode}</p>
+          <div className="mb-6 p-4 border rounded-lg bg-white flex flex-row items-center">
+            <QRCode
+              size={150}
+              style={{ height: "auto" }}
+              value={qrCode}
+              viewBox={`0 0 256 256`}
+            />
+            <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-3 my-5">
+              <button
+                onClick={handleCopy}
+                className="ml-auto text-gray-600 hover:text-black"
+                title="Salin kode"
+              >
+                <MdFileCopy size={18} />
+              </button>
+              {copied && (
+                <span className="text-green-500 text-sm">Tersalin!</span>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

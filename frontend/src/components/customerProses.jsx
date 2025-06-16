@@ -165,7 +165,7 @@ export default function CustomerTimeLine() {
               </span>
 
               {getProcessLines(customer).map((line, idx) => {
-                console.log(line);
+      
                 const startPosition =
                   differenceInMinutes(line.start, currentStartTime) *
                   minuteWidth;

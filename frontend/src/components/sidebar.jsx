@@ -19,7 +19,6 @@ export default function Sidebar() {
       alert(error.message);
     }
   };
-  console.log(isOpen);
 
   return (
     <>
@@ -38,7 +37,7 @@ export default function Sidebar() {
         }`}
         aria-label="Sidebar"
       >
-        <div className="flex h-full flex-col justify-between overflow-y-auto bg-white px-3 ">
+        <div className="flex h-full flex-col justify-between overflow-y-auto bg-gray-100 px-3 ">
           <div className="border-b border-gray-200 pb-5">
             <NavLink
               to="/"

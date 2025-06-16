@@ -23,6 +23,7 @@ import HistoryPage from "./pages/History.jsx";
 import ScanFinishPage from "./pages/scannerFinish.jsx";
 import AbsensiInPage from "./pages/absensiIn.jsx";
 import AbsensiOutPage from "./pages/absensiOut.jsx";
+// import AbsensiPage from "./pages/absensiIn.jsx";
 function App() {
   return (
     <>
@@ -73,6 +74,7 @@ function App() {
               path="/tracking/:customerId/:cycleNumber"
               element={<DataTrackingTable />}
             />
+            {/* <Route path="/absensi" element={<AbsensiPage />} /> */}
             <Route path="/absensi/In" element={<AbsensiInPage />} />
             <Route path="/absensi/Out" element={<AbsensiOutPage />} />
             <Route path="/scanAbsensi" element={<ScannerPage />} />

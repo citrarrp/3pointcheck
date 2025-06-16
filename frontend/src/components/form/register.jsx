@@ -40,7 +40,7 @@ const Register = ({ onRegister }) => {
 
   const onSubmit = async (data) => {
     const result = await onRegister(data);
-    console.log(result, data);
+    // console.log(result, data);
     alert(result.message);
     onRegister();
 

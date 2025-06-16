@@ -78,7 +78,7 @@ const iconToImage = (
   let iconMarkup = renderToStaticMarkup(<IconComponent size={size} />);
   iconMarkup = iconMarkup.replace(/fill=".*?"/g, "");
 
-  console.log("Warna", statusColor);
+  // console.log("Warna", statusColor);
   const gradient =
     percentage === 100 || percentage === 0
       ? `
@@ -164,7 +164,7 @@ const TimelineChart = ({
     const startDelay = new Date(baseDate);
     return startDelay;
   }, [currentTime, selectDate]);
-  let i = 0;
+
   const isMatch = (trackCustomer, itemCustomer) => {
     const tc = trackCustomer.toLowerCase().trim();
     //.replace(/\s+/g, "");
@@ -192,7 +192,7 @@ const TimelineChart = ({
       }));
   }, [data, getDateToday]);
 
-  console.log(allDepartures, "semua jawal");
+  // console.log(allDepartures, "semua jawal");
 
   const { filteredDeparture, countByStatus } = useMemo(() => {
     let count = {
@@ -201,18 +201,18 @@ const TimelineChart = ({
       delay: 0,
     };
 
-    console.log(
-      allDepartures.filter((item) => {
-        const match = trackingData.find((track) => {
-          return (
-            isMatch(track.customer, item.customerName) &&
-            track.cycle === item.cycle
-          );
-        });
-        return match;
-      }),
-      "hasil filter match"
-    );
+    // console.log(
+    //   allDepartures.filter((item) => {
+    //     const match = trackingData.find((track) => {
+    //       return (
+    //         isMatch(track.customer, item.customerName) &&
+    //         track.cycle === item.cycle
+    //       );
+    //     });
+    //     return match;
+    //   }),
+    //   "hasil filter match"
+    // );
     const result = allDepartures
       .filter((item) => {
         const match = trackingData.find((track) => {
@@ -224,13 +224,13 @@ const TimelineChart = ({
         return match;
       })
       .map((item, index) => {
-        console.log(
-          "item",
-          index,
-          item,
-          trackingData,
-          trackingData[0]?.status === "-"
-        );
+        // console.log(
+        //   "item",
+        //   index,
+        //   item,
+        //   trackingData,
+        //   trackingData[0]?.status === "-"
+        // );
         const finishPrepTrack = trackingData.find(
           (t) =>
             isMatch(t.customer, item.customerName) &&
@@ -248,14 +248,14 @@ const TimelineChart = ({
         let percentage = 0;
         let statusColor = "#fce6cf";
 
-        console.log(
-          trackingData,
-          finishPrepTrack,
-          departureTrack,
-          "CONTOJ TRACK"
-        );
+        // console.log(
+        //   trackingData,
+        //   finishPrepTrack,
+        //   departureTrack,
+        //   "CONTOJ TRACK"
+        // );
         if (finishPrepTrack?.status === "-") {
-          console.log("kesini");
+          // console.log("kesini");
           percentage = finishPrepTrack.percentage || 0;
           statusColor = "#fce6cf"; // warna bg default, bisa kamu sesuaikan
         } else if (finishPrepTrack?.status === "Delay") {
@@ -275,7 +275,7 @@ const TimelineChart = ({
             percentage = 100;
             statusColor = "#008000"; // hijau
           } else if (departureTrack?.status === "Delay") {
-            console.log("kesini ga");
+            // console.log("kesini ga");
             count.delay += 1;
             percentage = 100;
             statusColor = "#e60a29"; // merah
@@ -285,8 +285,6 @@ const TimelineChart = ({
             statusColor = "#527cf7"; // biru
           }
         }
-        console.log(departureTrack, count, i, "perhitungan");
-        i += 1;
 
         return {
           ...item,
@@ -353,7 +351,7 @@ const TimelineChart = ({
     return [...new Set(filteredDepartures.map((item) => item.customerName))];
   }, [filteredDepartures]);
 
-  console.log(filteredDepartures, "ini contoh");
+
   const chartData = useMemo(
     () => ({
       datasets: [
@@ -690,12 +688,8 @@ const TimelineChart = ({
           </div>
         </div>
 
-        <div
-          className={`${
-            open ? "order-2 p-4 space-y-4" : "order-1 p-4 space-y-4"
-          }`}
-        >
-          <h2 className="text-2xl font-bold text-gray-800">Delivery Status</h2>
+        <div className={`${open ? "order-2 " : "order-1"} py-4 space-y-4`}>
+          {/* <h2 className="text-2xl font-bold text-gray-800">Delivery Status</h2> */}
 
           <div
             className={`grid 

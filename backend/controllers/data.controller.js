@@ -81,7 +81,7 @@ export const getDatabyId = async (req, res) => {
 const defaultSteps = {
   "Received Order": "RECEIVING E-KBN",
   "Waiting Post": "WAITING POST",
-  "Start Preparation": "PULLING (60')",
+  "Start Preparation (Pulling)": "PULLING (60')",
   Inspection: "PULLING (60')",
   "Finish Preparation": "WRAPPING",
   "Ready to Shipping Area": "WAITING SHIPPING AREA",
@@ -127,7 +127,7 @@ export const createData = async (req, res) => {
     selectedCustomer,
   };
 
-  console.log(payload, "data masuk");
+  // console.log(payload, "data masuk");
 
   try {
     const newDataCustomer = new Tes(payload);
@@ -136,9 +136,9 @@ export const createData = async (req, res) => {
 
     const result = [];
     const processedDnNumbers = new Set();
-    console.log(kolomSelected, "kolom");
+
     for (const dataItem of kolomSelected) {
-      console.log(dataItem, "item");
+      // console.log(dataItem, "item");
       const dnNumber =
         dataItem.dn_number ||
         dataItem.order_delivery ||
@@ -146,7 +146,7 @@ export const createData = async (req, res) => {
 
       if (processedDnNumbers.has(dnNumber)) continue; // skip jika sudah diproses
       processedDnNumbers.add(dnNumber);
-      console.log(processedDnNumbers, "dn");
+      // console.log(processedDnNumbers, "dn");
 
       // for (const item of tracking) {
       //   const matchedStep = Object.keys(defaultSteps).find(
@@ -169,7 +169,7 @@ export const createData = async (req, res) => {
           result.push({
             cycle: dataItem.delivery_cycle,
             dnNumber,
-            waktu: matchedItem.waktu,
+            waktu: matchedItem.waktu || null,
             durasi: matchedItem.durasi,
             step: stepKey,
             waktuDelv: dataItem.delivery_date,
@@ -178,13 +178,13 @@ export const createData = async (req, res) => {
       }
     }
     const trackingUpdates = [];
-    console.log(result, "hasil");
+ 
     for (const data of result) {
       const { cycle, dnNumber, waktu, durasi, step, waktuDelv } = data;
       // try {
       // Menggunakan await untuk menunggu hingga data berhasil dimasukkan
 
-      console.log(data, "data tracking");
+      // console.log(data, "data tracking");
       let waktuAktual = null;
       let delay = null;
       let status = "-";
@@ -200,11 +200,11 @@ export const createData = async (req, res) => {
         date: waktuAktualUTC.date(),
       });
 
-      console.log(
-        waktuStandarUTC,
-        moment(waktuStandarUTC).tz("Asia/Jakarta"),
-        "imi"
-      );
+      // console.log(
+      //   waktuStandarUTC,
+      //   moment(waktuStandarUTC).tz("Asia/Jakarta"),
+      //   "imi"
+      // );
 
       // const waktuStandarJakarta = waktuStandarCorrected.tz("Asia/Jakarta");
       // console.log("Waktu Aktual (Jakarta):", waktuAktualJakarta.format());
@@ -220,10 +220,17 @@ export const createData = async (req, res) => {
       waktuStandar = waktuStandarJakarta;
 
       if (step === "Finish Preparation") {
-        console.log(waktu, durasi);
+       
         waktuStandar = moment(waktuStandarJakarta)
           .add(jam, "hours")
           .add(menit, "minutes");
+      }
+
+      if (step === "Ready to Shipping Area") {
+        waktuStandar = moment(waktuStandarJakarta)
+          .add(jam, "hours")
+          .add(menit, "minutes")
+          .add(15, "minutes");
       }
 
       if (step === "Create Surat Jalan") {
@@ -249,12 +256,12 @@ export const createData = async (req, res) => {
         const diffMinutes = waktuNow.diff(waktuStandarCorrect, "minutes");
 
         waktuStandar = waktuStandarCorrect;
-        console.log(
-          waktuStandar,
-          "standar",
-          waktuNow,
-          moment.tz("Asia/Jakarta")
-        );
+        // console.log(
+        //   waktuStandar,
+        //   "standar",
+        //   waktuNow,
+        //   moment.tz("Asia/Jakarta")
+        // );
         waktuAktual = waktuNow;
 
         if (diffMinutes > 0) {
@@ -285,19 +292,17 @@ export const createData = async (req, res) => {
         verificationCode: null,
       });
 
-      console.log(newTracking);
       trackingUpdates.push(newTracking.save());
     }
-    console.log("baru", trackingUpdates, "update");
+    // console.log("baru", trackingUpdates, "update");
     await Promise.all(trackingUpdates);
-    console.log("Semua tracking berhasil disimpan.");
     res.status(201).json({ success: true, data: newDataCustomer });
   } catch (error) {
     console.error("Error in Create Customer:", error.message);
     res.status(500).json({
       success: false,
       message: "Nama Customer sudah ada!",
-      detail: error.message,
+      detail: error.message, 
     });
   }
 };
@@ -365,7 +370,6 @@ export const updateData = async (req, res) => {
   const { id } = req.params;
   const { kolomSelected, matchedCycle } = req.body;
 
-  console.log(matchedCycle, "cycle ada ga sih");
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res
       .status(404)
@@ -405,20 +409,20 @@ export const updateData = async (req, res) => {
       const globalProcessedDnNumbers = new Map();
 
       for (const dataItem of kolom.data) {
-        console.log("masuk", dataItem, kolom.data);
+        // console.log("masuk", dataItem, kolom.data);
 
         let waktuDelv = dataItem.delivery_date;
 
-        console.log(
-          dataItem.delivery_date,
-          "tanggal asli",
-          moment.tz(
-            `${moment(waktuDelv).format("YYYY-MM-DD")} 00:00`,
-            "Asia/Jakarta"
-          ),
-          moment.utc(waktuDelv),
-          moment(waktuDelv)
-        );
+        // console.log(
+        //   dataItem.delivery_date,
+        //   "tanggal asli",
+        //   moment.tz(
+        //     `${moment(waktuDelv).format("YYYY-MM-DD")} 00:00`,
+        //     "Asia/Jakarta"
+        //   ),
+        //   moment.utc(waktuDelv),
+        //   moment(waktuDelv)
+        // );
         if (!waktuDelv) {
           const currentKolomIndex = updated.kolomSelected.indexOf(kolom);
           const currentDataIndex = kolom.data.indexOf(dataItem);
@@ -457,18 +461,17 @@ export const updateData = async (req, res) => {
           .tz(waktuDelv, "Asia/Jakarta")
           .add(7, "hours");
 
-        console.log();
         const numberCycle =
           dataItem.cycle || dataItem.delivery_cycle
             ? dataItem.delivery_cycle || dataItem.cycle
             : 1;
-        console.log(waktuDelv, waktuAktualUTC, "WAKTU ASLI");
+        // console.log(waktuDelv, waktuAktualUTC, "WAKTU ASLI");
         const dnNumber = dataItem.dn_number;
         const uniqueKey = `${dnNumber}-${numberCycle}`;
         if (globalProcessedDnNumbers.has(uniqueKey)) continue;
         globalProcessedDnNumbers.set(uniqueKey, true);
 
-        console.log(updated, matchedCycle, "data update");
+        // console.log(updated, matchedCycle, "data update");
         // const matchedCycle = updated.cycle.find(
         //   (c) => c.numberCycle === numberCycle
         // );
@@ -478,14 +481,17 @@ export const updateData = async (req, res) => {
 
         if (!matchedCycleForNumber) continue;
 
-        for (const step of matchedCycleForNumber) {
-          const stepKey = Object.keys(defaultSteps).find(
-            (key) => defaultSteps[key] === step.processName
+        // for (const step of matchedCycleForNumber) {
+        //   const stepKey = Object.keys(defaultSteps).find(
+        //     (key) => defaultSteps[key] === step.processName
+        //   );
+
+        for (const [stepKey, processName] of Object.entries(defaultSteps)) {
+          const step = matchedCycleForNumber.find(
+            (item) => item.processName === processName
           );
+          if (!step) continue;
 
-          if (!stepKey) continue;
-
-          console.log(step, "contoh step");
           const existingTracking = await trackingDelv.findOne({
             customerId: id,
             numberCycle,
@@ -502,7 +508,7 @@ export const updateData = async (req, res) => {
               .add(7, "hours");
             const waktuStandarUTC = moment.utc(step.waktu);
 
-            console.log(waktuDelv, waktuAktualUTC, "WAKTU ASLI");
+            // console.log(waktuDelv, waktuAktualUTC, "WAKTU ASLI");
 
             const waktuStandarJakarta = waktuStandarUTC.set({
               year: waktuAktualUTC.year(),
@@ -510,7 +516,7 @@ export const updateData = async (req, res) => {
               date: waktuAktualUTC.date(),
             });
 
-            console.log(waktuAktualUTC, "berapa jam");
+            // console.log(waktuAktualUTC, "berapa jam");
 
             let waktuStandar = waktuStandarJakarta;
 
@@ -547,22 +553,22 @@ export const updateData = async (req, res) => {
               });
               const waktuNow = moment().tz("Asia/Jakarta");
 
-              console.log(waktuStandarCorrected, "imi");
+              // console.log(waktuStandarCorrected, "imi");
 
               // const waktuAktualJakarta = waktuAktualUTC.tz("Asia/Jakarta");
 
-              console.log("Waktu Standar:", waktuStandarJakarta.format());
+              // console.log("Waktu Standar:", waktuStandarJakarta.format());
 
               const diffMinutes = waktuNow.diff(
                 waktuStandarCorrected,
                 "minutes"
               );
-              console.log(
-                "etdah",
-                diffMinutes,
-                waktuNow,
-                waktuStandarCorrected
-              );
+              // console.log(
+              //   "etdah",
+              //   diffMinutes,
+              //   waktuNow,
+              //   waktuStandarCorrected
+              // );
               waktuStandar = waktuStandarCorrected;
 
               waktuAktual = waktuNow;
@@ -579,7 +585,7 @@ export const updateData = async (req, res) => {
               }
             }
 
-            console.log(stepKey, waktuStandarJakarta, "ada kok");
+         
             const newTracking = new trackingDelv({
               customerId: id,
               numberCycle,
@@ -678,7 +684,7 @@ export const updateDataCycle = async (req, res) => {
   try {
     // session.startTransaction();
     const exist = await Tes.findById(id);
-    console.log(exist);
+
     if (!exist)
       return res.status(404).json({ message: "Data tidak ditemukan" });
 
@@ -862,22 +868,22 @@ export const updateDataCycle = async (req, res) => {
               const waktuAktualJakarta = waktuAktualUTC.tz("Asia/Jakarta");
               const waktuStandarJakarta =
                 waktuStandarCorrected.tz("Asia/Jakarta");
-              console.log(
-                "Waktu Aktual (Jakarta):",
-                waktuAktualJakarta.format()
-              );
-              console.log("Waktu Standar:", waktuStandarJakarta.format());
+              // console.log(
+              //   "Waktu Aktual (Jakarta):",
+              //   waktuAktualJakarta.format()
+              // );
+              // console.log("Waktu Standar:", waktuStandarJakarta.format());
 
               const diffMinutes = waktuAktualJakarta.diff(
                 waktuStandarJakarta,
                 "minutes"
               );
-              console.log(
-                diffMinutes,
-                "kok",
-                waktuAktualJakarta,
-                waktuStandarJakarta
-              );
+              // console.log(
+              //   diffMinutes,
+              //   "kok",
+              //   waktuAktualJakarta,
+              //   waktuStandarJakarta
+              // );
 
               waktuAktual = waktuAktualJakarta.format("HH:mm");
 
@@ -919,7 +925,7 @@ export const updateDataCycle = async (req, res) => {
     await Promise.all(trackingUpdates);
 
     const allTrackings = await trackingDelv.find({ customerId: id });
-    console.log(allTrackings);
+   
 
     return res.json({ message: "Cycle berhasil diperbarui", data: updated });
   } catch (error) {
@@ -1031,16 +1037,40 @@ export const getDataByName = async (req, res) => {
     //   // nama: { $regex: new RegExp(`(^|\\s)${namaCust}(\\s|$)`, "i") },
 
     // });
-    const regexes = namaCust.split(/\s+/).map((word) => new RegExp(word, "i"));
+    const containsNumber = /\d/.test(namaCust);
 
-    const data = await Tes.findOne({
-      $or: regexes.map((r) => ({ nama: { $regex: r } })),
-    });
+    let data = null;
 
+    if (containsNumber) {
+      // 2. Coba cari dulu dengan nama asli (apa adanya)
+      data = await Tes.findOne({
+        nama: { $regex: new RegExp(namaCust, "i") },
+      });
+
+      // 3. Kalau tidak ketemu, baru coba versi dibersihkan
+      if (!data) {
+        const cleaned = namaCust.replace(/[-_\s]/g, "");
+        data = await Tes.findOne({
+          nama: { $regex: new RegExp(cleaned, "i") },
+        });
+      }
+    } else {
+      // 4. Kalau tidak mengandung angka, langsung pakai pecahan kata (split & regex per word)
+      const regexes = namaCust
+        .replace(/[-_]/g, " ")
+        .split(/\s+/)
+        .map((word) => new RegExp(word, "i"));
+
+      data = await Tes.findOne({
+        $or: regexes.map((r) => ({ nama: { $regex: r } })),
+      });
+    }
+
+    // 5. Balikan response
     if (!data) {
       return res.status(404).json({
         success: false,
-        message: "Data not found for the given username",
+        message: "Data not found",
       });
     }
 
@@ -1121,7 +1151,7 @@ export const deleteCycle = async (req, res) => {
 export const deleteDataHarian = async (req, res) => {
   const { id, idDataHarian } = req.params;
 
-  console.log(id, idDataHarian);
+  // console.log(id, idDataHarian);
   try {
     const result = await Tes.updateOne(
       { _id: id },

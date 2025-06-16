@@ -287,7 +287,7 @@ const Sidebar_Link = [
   {
     id: 12,
     routes: "/register",
-    name: "Pendaftaran User",
+    name: "Registrasi User",
     icon: {
       fill: <TiUserAdd size={24} />,
       outline: <TiUserAddOutline size={24} />,

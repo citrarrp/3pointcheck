@@ -1,5 +1,4 @@
 const ResultContainerPlugin = (results) => {
-  console.log(results);
   return (
     <div className="Result-container mt-4 border p-4 rounded bg-white shadow">
       <div className="Result-header font-bold mb-2">

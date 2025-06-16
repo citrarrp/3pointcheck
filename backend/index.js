@@ -9,6 +9,7 @@ import fieldRoutes from "./routes/label.router.js";
 import userRoutes from "./routes/user.router.js";
 import AbsensiRoutes from "./routes/absensi.router.js";
 import trackingRoutes from "./routes/tracking.router.js";
+import "./jobs/node-cron.js";
 
 dotenv.config({ path: ".env" });
 
@@ -19,16 +20,11 @@ app.use(express.json());
 const db = async () => {
   try {
     const conn = await mongoose.connect(process.env.MONGO_URL);
-    console.log(
-      "MongoDB Connected",
-      mongoose.connection.host,
-      mongoose.connection.db.databaseName
-    );
 
     const collections = await mongoose.connection.db
       .listCollections()
       .toArray();
-    console.log("Collections in DB:");
+   
     collections.forEach((collection) => {
       console.log("- " + collection.name);
     });

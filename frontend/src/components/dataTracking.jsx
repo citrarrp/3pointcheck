@@ -344,13 +344,13 @@ export default function DataTrackingTable() {
 
     const diffMinutes = waktuAktualJakarta.diff(waktuStandarJakarta, "minutes");
 
-    console.log(
-      diffMinutes,
-      "beda",
-      waktuAktualJakarta,
-      waktuStandarJakarta,
-      item.waktuStandar
-    );
+    // console.log(
+    //   diffMinutes,
+    //   "beda",
+    //   waktuAktualJakarta,
+    //   waktuStandarJakarta,
+    //   item.waktuStandar
+    // );
     if (diffMinutes > 0) {
       delay = `-${diffMinutes} menit`;
       status = "Delay";
@@ -396,7 +396,6 @@ export default function DataTrackingTable() {
       },
     }));
 
-    console.log(item, "item");
     getDelay(item, proses, dn, isChecked, formattedTime);
   };
 
@@ -456,14 +455,13 @@ export default function DataTrackingTable() {
   const groupedData = groupByDN(dataCust);
 
   const formatTime = (dateString) => {
-    console.log(dateString);
     if (!dateString) return "-";
     if (/^\d{2}:\d{2}$/.test(dateString)) return dateString;
     return moment.utc(dateString).format("HH:mm");
   };
 
   const filteredProses = proses.filter((prosesName) =>
-    prosesName.toLowerCase().includes(searchTerm.toLowerCase())
+    prosesName.trim().toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -575,9 +573,8 @@ export default function DataTrackingTable() {
                         processes[(`${prosesName}-${dnNumber}`, "ini")]
                       );
                       const item = items.find((i) =>
-                        prosesName.includes(i.nama)
+                        prosesName.trim().includes(i.nama.trim())
                       );
-                      console.log(item, "conoth item");
                       return (
                         <tr
                           key={idx}

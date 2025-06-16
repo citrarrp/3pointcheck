@@ -40,10 +40,7 @@ export const getUser = async (req, res) => {
 };
 
 export const deleteUser = async (req, res) => {
-  console.log("Askes ini");
   const { id } = req.params;
-  console.log(req.user, "RES");
-
   try {
     const User = await user.findById(id);
     if (!User) {
@@ -96,7 +93,6 @@ export const createUser = async (req, res) => {
   }
 
   const { username, password, roles } = req.body;
-  console.log(username, password, roles, req.body);
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
 

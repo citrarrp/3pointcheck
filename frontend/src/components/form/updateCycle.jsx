@@ -139,7 +139,6 @@ export default function CycleUpdateForm({ onSubmit }) {
       return;
     }
     onSubmit(data.cycles);
-    console.log(data.cycles);
   };
 
   return (

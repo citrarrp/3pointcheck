@@ -4,10 +4,9 @@ import { useLocation } from "react-router-dom";
 export default function BreadcrumbCycle() {
   const location = useLocation();
   const { customerId, uniqueCode } = useParams();
-  console.log(location.pathname);
   const isPath = (to) => decodeURIComponent(location.pathname) === to;
-  console.log("pathname", decodeURIComponent(location.pathname));
-  console.log("expected", `/printLabel/${customerId}/${uniqueCode}`);
+  // console.log("pathname", decodeURIComponent(location.pathname));
+  // console.log("expected", `/printLabel/${customerId}/${uniqueCode}`);
 
   return (
     <nav className="text-sm text-gray-700 mb-4">

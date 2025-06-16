@@ -31,7 +31,7 @@ export default function Home() {
   const { isOpen, setIsOpen } = useContext(SidebarContext);
 
   const { data, error } = useSWR(
-    "http://localhost:3000/sodDiagram/api/sod/",
+    "http://192.168.56.1:3000/sodDiagram/api/sod/",
     fetcher,
     {
       refreshInterval: 300000, // 5 menit = 300.000 ms
@@ -52,7 +52,7 @@ export default function Home() {
     if (!dataTracking) return [];
 
     const prosesYangDipilih = [
-      "Start Preparation",
+      "Start Preparation (Pulling)",
       "Finish Preparation",
       "Departure Truck",
     ];
@@ -74,6 +74,8 @@ export default function Home() {
     const uniqueMap = new Map();
 
     filtered.forEach((item) => {
+      console.log(item, "contoh dikasi");
+      console.log(filtered, "conoh tes");
       const tanggal = moment(item.tanggal).format("YYYY-MM-DD");
       const key = `${item.customerId.nama}-${item.cycleNumber}-${item.nama}-${tanggal}`;
 
@@ -157,28 +159,32 @@ export default function Home() {
         isOpen ? "w-4xl" : "w-full"
       } transition-all duration-200`}
     >
-      <DatePicker
-        selected={selectedDate}
-        onChange={(date) => setSelectedDate(date)}
-        dateFormat="yyyy-MM-dd"
-        className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
-        maxDate={new Date()}
-        placeholderText="Pilih tanggal"
-        showYearDropdown
-        dropdownMode="select"
-      />
+      {isOpen && (
+        <DatePicker
+          selected={selectedDate}
+          onChange={(date) => setSelectedDate(date)}
+          dateFormat="yyyy-MM-dd"
+          className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
+          maxDate={new Date()}
+          placeholderText="Pilih tanggal"
+          showYearDropdown
+          dropdownMode="select"
+        />
+      )}
 
-      <div className="flex justify-between">
+      <div className="flex justify-between mx-4">
         <div className="flex items-center gap-4">
-          <h1 className={`font-bold text-lg my-6`}>
+          <h1 className={`font-bold ${isOpen ? "text-lg" : "text-4xl"} my-6`}>
             Timeline Keberangkatan Truk
           </h1>
           <button
             onClick={() => setIsOpen(!isOpen)}
             type="button"
-            className="p-2 rounded-full text-sm text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-gray-200"
+            className="p-4 rounded-full text-sm text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-gray-200"
           >
-            <FaDisplay className="w-5 h-5 mx-auto" />
+            <FaDisplay
+              className={`${isOpen ? "w-5 h-5" : "w-7 h-7"} mx-auto`}
+            />
           </button>
         </div>
         <RealtimeTimer />

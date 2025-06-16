@@ -62,7 +62,7 @@ export const getAbsensibyDate = async (req, res) => {
       "nama"
     );
 
-    console.log(absensiall, absensiCustomer);
+    // console.log(absensiall, absensiCustomer);
     if (!absensiall || absensiall.length === 0) {
       return res
         .status(404)
@@ -75,7 +75,7 @@ export const getAbsensibyDate = async (req, res) => {
       data: absensiall,
     });
   } catch (error) {
-    console.log("error in fetching Customers:", error.message);
+    // console.log("error in fetching Customers:", error.message);
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
@@ -95,8 +95,6 @@ export const validateQR = async (req, res) => {
     // status,
   } = req.body;
 
-  console.log(timestamp, "time");
-
   if (!truckName || !id || !scanType || !timestamp || !h) {
     return res.status(400).json({ message: "Data tidak valid" });
   }
@@ -110,7 +108,6 @@ export const validateQR = async (req, res) => {
   }
 
   const serverSecret = process.env.QR_SECRET;
-  console.log(serverSecret);
   const payload = {
     id,
     truckName,
@@ -123,14 +120,11 @@ export const validateQR = async (req, res) => {
 
   const payloadString = JSON.stringify(payload, Object.keys(payload).sort());
 
-  console.log(payloadString, "payload");
   const expectedHash = crypto
     .createHmac("sha512", serverSecret)
     .update(payloadString)
     .digest("hex");
 
-  console.log("BACKEND SECRET:", JSON.stringify(process.env.QR_SECRET));
-  console.log(expectedHash, h);
   if (expectedHash !== h) {
     return res
       .status(400)
@@ -189,18 +183,10 @@ export const validateQR = async (req, res) => {
     (c) => c.numberCycle === truckCustomerCycle.cycleNumber
   )?.stepCycle;
 
-  console.log(cycle, tesDoc, tesDoc.cycle);
+  // console.log(cycle, tesDoc, tesDoc.cycle);
   const waktuStandarIn = cycle.find((c) => c.nama == "Arrived Truck");
   const waktuStandarOut = cycle.find((c) => c.nama == "Departure Truck");
-  console.log(
-    waktuStandarIn,
-    "in",
-    waktuStandarOut,
-    "out",
-    tesDoc,
-    waktuStandarIn.waktu_standar,
-    waktuStandarOut.waktu_standar
-  );
+ 
 
   let status;
   let delay = "";
@@ -239,9 +225,6 @@ export const validateQR = async (req, res) => {
     status = "Ontime";
   }
 
-  console.log(timeDiff, diffMinutes);
-
-  console.log(truckCustomerCycle);
   const newAbsensi = new Absensi({
     truckName,
     route,
@@ -294,8 +277,8 @@ export const getTrucks = async (req, res) => {
   try {
     const truck = await trucks.find({});
     res.status(200).json({ success: true, data: truck });
-  } catch (error) {
-    console.log("error in fetching TRUCKS:", error.message);
+  // } catch (error) {
+  //   console.log("error in fetching TRUCKS:", error.message);
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };

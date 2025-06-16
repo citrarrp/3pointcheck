@@ -4,7 +4,6 @@ import { MdDelete } from "react-icons/md";
 
 export default function DeleteUser({ id, successDelete }) {
   const [loading, setLoading] = useState(false);
-  console.log("id", id);
   //   const { showToast } = useToast();
   const handleDelete = async () => {
     setLoading(true);

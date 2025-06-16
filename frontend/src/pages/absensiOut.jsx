@@ -45,11 +45,11 @@ const AbsensiOutPage = () => {
       const secret = import.meta.env.VITE_QR_SECRET;
       const hmac = CryptoJS.HmacSHA512(payloadString, secret);
 
-      console.log(secret, "teks", payloadString, time);
-      console.log(
-        "FRONTEND SECRET:",
-        JSON.stringify(import.meta.env.VITE_QR_SECRET)
-      );
+      // console.log(secret, "teks", payloadString, time);
+      // console.log(
+      //   "FRONTEND SECRET:",
+      //   JSON.stringify(import.meta.env.VITE_QR_SECRET)
+      // );
 
       return JSON.stringify({
         h: hmac.toString(CryptoJS.enc.Hex),

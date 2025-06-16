@@ -22,10 +22,8 @@ const seed = async () => {
 
     const existing = await labelField.countDocuments();
     if (existing > 0) {
-      console.log("labelField sudah ada. Skip seeding.");
     } else {
       await labelField.insertMany(seedData);
-      console.log("Seeding labelField berhasil!");
     }
 
     mongoose.disconnect();
