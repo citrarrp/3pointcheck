@@ -43,7 +43,7 @@ export default function TableUser({ users, onDeleteUser, loading, error }) {
     //             <tr className="border border-slate-200">
     //               <th className="px-15 py-3 text-left w-1/2">
     //                 <span className="font-semibold text-slate-700">
-    //                   Username
+    //                   fullname
     //                 </span>
     //               </th>
     //               <th className="px-15 py-3 text-center w-1/2">
@@ -62,7 +62,7 @@ export default function TableUser({ users, onDeleteUser, loading, error }) {
     //               >
     //                 <td className="px-15 py-5 text-left">
     //                   <p className="font-sans text-md font-medium text-slate-500">
-    //                     {item.username}
+    //                     {item.fullname}
     //                   </p>
     //                 </td>
     //                 <td className="px-15 py-5 text-left">
@@ -97,7 +97,7 @@ export default function TableUser({ users, onDeleteUser, loading, error }) {
                     scope="col"
                     className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
-                    Username
+                    fullname
                   </th>
                   <th
                     scope="col"
@@ -123,7 +123,7 @@ export default function TableUser({ users, onDeleteUser, loading, error }) {
                       <div className="flex items-center">
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
-                            {item.username}
+                            {item.fullname}
                           </div>
                         </div>
                       </div>

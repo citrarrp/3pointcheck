@@ -5,29 +5,29 @@ import user from "../models/user.js";
 dotenv.config({ path: ".env" });
 
 const seedData = [
-  // { username: "User", password: "tesdulu", roles: "production" },
+  // { fullname: "User", password: "tesdulu", roles: "production" },
   {
-    username: "admin_user",
+    fullname: "admin_user",
     password: "apaaja",
     roles: "admin",
   },
   // {
-  //   username: "admin_user",
+  //   fullname: "admin_user",
   //   password: "apaaja",
   //   roles: "user",
   // },
   // {
-  //   username: "production-1",
+  //   fullname: "production-1",
   //   password: "apaaja",
   //   roles: "production-staff",
   // },
   // {
-  //   username: "production-2",
+  //   fullname: "production-2",
   //   password: "apaaja",
   //   roles: "production-staff",
   // },
   // {
-  //   username: "production-2",
+  //   fullname: "production-2",
   //   password: "apaaja",
   //   roles: "production-admin",
   // },

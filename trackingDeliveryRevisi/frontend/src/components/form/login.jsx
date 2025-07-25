@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/auth.js";
 
 const LoginForm = () => {
-  const [username, setUsername] = useState("");
+  const [fullname, setfullname] = useState("");
   const [password, setPassword] = useState("");
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -11,7 +11,7 @@ const LoginForm = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      await login(username, password);
+      await login(fullname, password);
       navigate("/");
     } catch (error) {
       alert(error.message);
@@ -30,10 +30,10 @@ const LoginForm = () => {
         <h2 className="text-2xl mb-4">Login</h2>
         <input
           type="text"
-          placeholder="Username"
+          placeholder="fullname"
           className="mb-2 p-2 w-full border"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          value={fullname}
+          onChange={(e) => setfullname(e.target.value)}
         />
         <input
           type="password"

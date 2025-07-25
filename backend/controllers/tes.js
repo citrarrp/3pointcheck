@@ -33,11 +33,14 @@ export const createData = async (req, res) => {
     sourceValueLabel,
     separator,
     selectedColumns,
+    dataReal,
     selectedCustomer,
+    selectedFields,
     uniquePartName,
     tracking,
   } = req.body;
 
+  console.log(selectedFields, dataReal);
   const now = moment().tz("Asia/Jakarta").toISOString();
 
   if (!nama) {
@@ -60,6 +63,8 @@ export const createData = async (req, res) => {
     separator,
     selectedColumns,
     selectedCustomer,
+    selectedFields,
+    dataReal,
   };
 
   try {

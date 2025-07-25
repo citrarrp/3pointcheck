@@ -165,6 +165,8 @@ import {
   PiShippingContainerLight,
   PiShippingContainerFill,
 } from "react-icons/pi";
+import { PiPassword, PiPasswordFill } from "react-icons/pi";
+import { AiFillProduct, AiOutlineProduct } from "react-icons/ai";
 import { RiChatHistoryFill, RiChatHistoryLine } from "react-icons/ri";
 import { TiUserAdd, TiUserAddOutline } from "react-icons/ti";
 import { FaAddressCard, FaRegAddressCard } from "react-icons/fa";
@@ -177,13 +179,15 @@ import {
 } from "react-icons/io5";
 import React from "react";
 import { useLocation } from "react-router-dom";
+import { useContext } from "react";
+import { SidebarContext } from "../context/sidebar-context.js";
+import { AuthContext } from "../context/auth.js";
 // import { useAuth } from
 
 const usePathname = () => {
   const location = useLocation();
   return location.pathname;
 };
-
 const Sidebar_Link = [
   {
     id: 1,
@@ -193,6 +197,7 @@ const Sidebar_Link = [
       fill: <HiHome size={24} />,
       outline: <HiOutlineHome size={24} />,
     },
+    role: "ppic",
   },
   {
     id: 2,
@@ -202,6 +207,7 @@ const Sidebar_Link = [
       fill: <RiChatHistoryFill size={24} />,
       outline: <RiChatHistoryLine size={24} />,
     },
+    role: "ppic",
   },
   {
     id: 3,
@@ -211,6 +217,7 @@ const Sidebar_Link = [
       fill: <MdLabel size={24} />,
       outline: <MdLabelOutline size={24} />,
     },
+    role: "ppic",
   },
   {
     id: 4,
@@ -220,6 +227,7 @@ const Sidebar_Link = [
       fill: <MdDriveFileMove size={24} />,
       outline: <MdDriveFileMoveOutline size={24} />,
     },
+    role: "ppic",
   },
   {
     id: 5,
@@ -229,6 +237,7 @@ const Sidebar_Link = [
       fill: <HiPrinter size={24} />,
       outline: <HiOutlinePrinter size={24} />,
     },
+    role: "production",
   },
   {
     id: 6,
@@ -238,6 +247,7 @@ const Sidebar_Link = [
       fill: <MdQrCodeScanner size={24} />,
       outline: <MdOutlineQrCodeScanner size={24} />,
     },
+    role: "ppic",
   },
   {
     id: 7,
@@ -247,14 +257,15 @@ const Sidebar_Link = [
       fill: <HiTruck size={24} />,
       outline: <HiOutlineTruck size={24} />,
     },
+    role: "ppic",
   },
   // {
   //   id: 8,
   //   routes: "/absensi/in",
   //   name: "Absensi Kedatangan Truck",
   //   icon: {
-  //     fill: <IoEnter size={30} />,
-  //     outline: <IoEnterOutline size={30} />,
+  //     fill: <IoEnter size={18} />,
+  //     outline: <IoEnterOutline size={18} />,
   //   },
   // },
   // {
@@ -262,8 +273,8 @@ const Sidebar_Link = [
   //   routes: "/absensi/out",
   //   name: "Absensi Keberangkatan Truck",
   //   icon: {
-  //     fill: <IoExit size={30} />,
-  //     outline: <IoExitOutline size={30} />,
+  //     fill: <IoExit size={18} />,
+  //     outline: <IoExitOutline size={18} />,
   //   },
   // },
   {
@@ -274,6 +285,7 @@ const Sidebar_Link = [
       fill: <FaAddressCard size={23} />,
       outline: <FaRegAddressCard size={23} />,
     },
+    role: "ppic",
   },
   {
     id: 11,
@@ -283,20 +295,43 @@ const Sidebar_Link = [
       fill: <PiShippingContainerFill size={23} />,
       outline: <PiShippingContainerLight size={23} />,
     },
+    role: "ppic",
   },
   {
     id: 12,
+    routes: "/masterMaterial",
+    name: "Data Master Material",
+    icon: {
+      fill: <AiFillProduct size={24} />,
+      outline: <AiOutlineProduct size={24} />,
+    },
+    role: "ppic",
+  },
+  {
+    id: 13,
     routes: "/register",
     name: "Registrasi User",
     icon: {
       fill: <TiUserAdd size={24} />,
       outline: <TiUserAddOutline size={24} />,
     },
+    role: "ppic",
+  },
+  {
+    id: 14,
+    routes: "/forget-password",
+    name: "Ubah Password",
+    icon: {
+      fill: <PiPasswordFill size={24} />,
+      outline: <PiPassword size={24} />,
+    },
+    role: "",
   },
 ];
 
 export default function SideBarLink() {
   const pathname = usePathname();
+  const { user, loading } = useContext(AuthContext);
   // if (loading) {
   //     return (
   //         <div>
@@ -309,6 +344,8 @@ export default function SideBarLink() {
   //     )
   // }
 
+  const { isOpen } = useContext(SidebarContext);
+
   const handleSideBarClick = () => {
     if (
       localStorage.getItem("alertMessage") &&
@@ -318,7 +355,9 @@ export default function SideBarLink() {
     }
   };
 
-  return Sidebar_Link.map((link) => {
+  return Sidebar_Link.filter((item) =>
+    String(user.dept.split("-")[0]).toLowerCase().includes(item.role)
+  ).map((link) => {
     const isCurrentMenu =
       link.id !== 1 ? pathname.includes(link.routes) : pathname === "/";
     return (
@@ -330,7 +369,7 @@ export default function SideBarLink() {
               isCurrentMenu
                 ? "bg-[#2c64c7] text-white"
                 : "hover:bg-gray-100 text-gray-900"
-            } flex items-center rounded-lg p-2.5 group group`}
+            } flex items-center rounded-lg p-2 group`}
             onClick={handleSideBarClick}
           >
             {/* {React.cloneElement(
@@ -344,7 +383,7 @@ export default function SideBarLink() {
               }
             )} */}
             {isCurrentMenu ? link.icon.fill : link.icon.outline}
-            <span className="ml-5 text-sm">{link.name}</span>
+            {isOpen && <span className="ml-5 text-sm">{link.name}</span>}
           </NavLink>
         </li>
       </>

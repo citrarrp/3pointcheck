@@ -9,38 +9,18 @@ import { MdDelete } from "react-icons/md";
 export default function LabelPage() {
   const navigate = useNavigate();
   const [data, setData] = useState([]);
-  const location = useLocation();
+  // const location = useLocation();
   // console.log(location.pathname);
 
   const fetchData = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/data`);
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/materials`
+      );
       const Data = await res.json();
       setData(Data.data);
     } catch (err) {
       console.error("Failed to fetch schema fields:", err);
-    }
-  };
-
-  const handleDeleteData = async (customerId, e) => {
-    e.stopPropagation();
-
-    try {
-      const data = await api.delete(`/data/${customerId}`);
-      if (data.data.success) {
-        await fetchData();
-        return { success: true, message: "User berhasil dihapus!" };
-      } else {
-        return {
-          success: false,
-          message: data.message || "Gagal mengambil data!",
-        };
-      }
-    } catch (error) {
-      return {
-        success: false,
-        message: error.response?.data?.message || "Gagal menghapus user",
-      };
     }
   };
 

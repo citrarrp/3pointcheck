@@ -51,7 +51,7 @@
 //   const tableData = getstrukturTabel(data);
 //   return (
 //     <table
-//       className="border-1"
+//       className="border-NONE"
 //     >
 //       <tbody>
 //         {tableData.map((row, rowIndex) => (
@@ -75,9 +75,23 @@
 // }
 
 import QRCode from "react-qr-code";
-import logo from "../assets/PT_Menara_Terus_Makmur.jpg";
+import logo from "../assets/PT_Menara_Terus_Makmur.png";
 import Barcode from "react-barcode";
 import moment from "moment-timezone";
+// import {
+//   MdOutlineCircle,
+//   MdStarOutline,
+//   MdOutlineSquare,
+// } from "react-icons/md";
+// import {
+//   MdOutlinePentagon,
+//   MdOutlineHexagon,
+//   MdOutlineRectangle,
+// } from "react-icons/md";
+// import { RiTriangleLine, RiPokerDiamondsLine } from "react-icons/ri";
+// import { PiStarAndCrescentLight, RiPokerHeartsLine } from "react-icons/pi";
+// import { PiParallelogramBold } from "react-icons/pi";
+// import { CiMedicalCross } from "react-icons/ci";
 
 const PDFTable = ({
   data,
@@ -90,6 +104,7 @@ const PDFTable = ({
   FirstSeq,
   pembagi,
 }) => {
+  console.log(FirstSeq, "INI SEQUENCE");
   if (!data || data.length === 0) return <p>Data tidak tersedia</p>;
   // console.log(shift, staff, sequence, FirstSeq, pembagi);
 
@@ -132,11 +147,6 @@ const PDFTable = ({
 
   return (
     <div className="flex flex-col flex-1/12 gap-2">
-      {/* {data.kolomSelected.data.map((item, index) => { */}
-      {/* {matchedKolom.map((dnNumber, index) => {
-        const item = data.kolomSelected.data.find(
-          (i) => i.dn_number === dnNumber.dn_number
-        ); */}
       {Array.from({ length: sequence }, (_, idx) => {
         // console.log(data[0].delivery_date, "tanggal");
         const currentSeq = parseInt(FirstSeq) + idx + 1;
@@ -144,33 +154,62 @@ const PDFTable = ({
         const isNewPage = idx % 3 === 0 && idx !== 0;
         return (
           <table
-            className="border-1 bg-white w-120 h-30 text-[10px]"
-            style={{ marginTop: isNewPage ? "25mm" : "0mm" }}
+            className="border-2 border-black bg-white w-120 h-30 text-[10px]"
+            style={{
+              marginTop: isNewPage ? "25mm" : "0mm",
+            }}
           >
-            <tr className="h-15">
-              <th colSpan="2" className="w-auto align-middle">
-                <div className="flex justify-center items-center h-full">
+            <tr
+              className="h-15 border-collapse border-none p-2"
+              style={{ border: "0px solid white" }}
+            >
+              <th
+                colSpan="2"
+                className="w-auto align-middle border-collapse border-none p-2"
+                style={{ border: "0px solid white" }}
+              >
+                <div className="flex justify-center items-center h-full ">
                   <img src={logo} loading="lazy" height="50px" width="150px" />
                 </div>
               </th>
-              <th colSpan="4" className="text-xs">
+              <th
+                colSpan="4"
+                className="text-xs border-collapse border-none "
+                style={{ border: "0px solid white" }}
+              >
                 IDENTIFIKASI BARANG
               </th>
             </tr>
-            <tr>
-              <td colspan="3">
+            <tr
+              className="border-collapse border-none "
+              style={{ border: "0px solid white" }}
+            >
+              <td
+                colspan="3"
+                className="border-collapse border-none "
+                style={{ border: "0px solid white" }}
+              >
                 {listKolom[0]} : <br />{" "}
-                <span className="block my-1 text-cenarrater font-normal">
-                  {data[0][listKolom[0].toLowerCase().replace(/\s+/g, "_")]}
+                <span className="block my-1 text-cenarrater text-[12px] font-normal ">
+                  {data[0].material_description}
                 </span>
               </td>
-              <td colspan="1" className="text-center">
+              <td
+                style={{ border: "0px solid white" }}
+                colspan="1"
+                className="text-center border-collapse border-none "
+              >
                 {listKolom[3]} <br />{" "}
                 <span className="block my-1 text-center font-normal">
                   {qty}
                 </span>
               </td>
-              <td colspan="2" rowspan="2">
+              <td
+                style={{ border: "0px solid white" }}
+                colspan="2"
+                rowspan="2"
+                className="border-collapse border-none "
+              >
                 <QRCode
                   size={100}
                   style={{ margin: "auto" }}
@@ -180,22 +219,33 @@ const PDFTable = ({
                           .tz(data[0].delivery_date, "Asia/Jakarta")
                           .format("DDMMYY")
                       : ""
-                  }|${String(currentSeq).padStart(4, "0")}`}
+                  }|${String(currentSeq).padStart(3, "0")}`}
                   viewBox="0 0 100 100"
                 />
               </td>
             </tr>
-            <tr>
-              <td colspan="2">
+            <tr
+              style={{ border: "0px solid white" }}
+              className="border-collapse border-none "
+            >
+              <td
+                colspan="2"
+                className="border-collapse border-none "
+                style={{ border: "0px solid white" }}
+              >
                 {listKolom[1]} :{" "}
-                <span className="block my-1 text-center font-normal">
-                  {data[0][listKolom[1].toLowerCase().replace(/\s+/g, "_")]}{" "}
+                <span className="block my-1 text-center text-[12px] font-normal">
+                  {data[0].material}{" "}
                 </span>
               </td>
-              <td colspan="2" className="">
+              <td
+                style={{ border: "0px solid white" }}
+                colspan="2"
+                className="border-collapse border-none "
+              >
                 UNIQUE CODE{" "}
                 <span className="block my-1 text-center font-normal text-[10px]">
-                  {data[0].selectedData.split(pembagi)[0]}|{Number(shift) + 1}|
+                  {data[0].material}|{Number(shift) + 1}|
                   {moment
                     .tz(data[0].delivery_date || new Date(), "Asia/Jakarta")
                     .isValid()
@@ -206,41 +256,72 @@ const PDFTable = ({
                 </span>
               </td>
             </tr>
-            <tr>
-              <td rowspan="2" colspan="2">
+            <tr
+              style={{ border: "0px solid white" }}
+              className="border-collapse border-none "
+            >
+              <td
+                style={{ border: "0px solid white" }}
+                rowspan="2"
+                colspan="2"
+                className="border-collapse border-none "
+              >
                 {" "}
                 {listKolom[4]} :
-                <span className="block my-1 text-center font-normal">
-                  {data[0][listKolom[4]?.toLowerCase().replace(/\s+/g, "_")]}{" "}
+                <span className="block my-1 text-center text-[12px] font-normal">
+                  {data[0].customer_material}{" "}
                 </span>
               </td>
-              <td colspan="2">DATE :</td>
-              <td colspan="2">
+              <td
+                style={{ border: "0px solid white" }}
+                colspan="2"
+                className="border-collapse border-none "
+              >
+                DATE :{" "}
+                {moment
+                  .tz(data[0].delivery_date || new Date(), "Asia/Jakarta")
+                  .isValid()
+                  ? moment
+                      .tz(data[0].delivery_date || new Date(), "Asia/Jakarta")
+                      .format("DD-MMM-YY")
+                  : ""}
+              </td>
+              <td
+                style={{ border: "0px solid white" }}
+                colspan="2"
+                className="border-collapse border-none "
+              >
                 {" "}
-                <span className="block my-1 text-center font-normal">
+                <span className="block my-1 text-center text-[12px] font-normal">
                   {/* {formatDate(
                     data[0][listKolom[5].toLowerCase().replace(/\s+/g, "_")]
                   )} */}
-                  {moment
-                    .tz(data[0].delivery_date || new Date(), "Asia/Jakarta")
-                    .isValid()
-                    ? moment
-                        .tz(data[0].delivery_date || new Date(), "Asia/Jakarta")
-                        .format("DD-MMM-YY")
-                    : ""}
                 </span>
               </td>
             </tr>
 
-            <tr>
-              <td colspan="2">SHIFT :</td>
-              <td colspan="2">
-                <div className="my-1 flex flex-row justify-between">
+            <tr
+              style={{ border: "0px solid white" }}
+              className="border-collapse border-none "
+            >
+              <td
+                colspan="2"
+                className="border-collapse border-none "
+                style={{ border: "0px solid white" }}
+              >
+                SHIFT :
+              </td>
+              <td
+                style={{ border: "0px solid white" }}
+                colspan="2"
+                className="border-collapse border-none "
+              >
+                <div className="my-1 flex flex-row text-[12px] justify-between">
                   {[1, 2, 3].map((num, i) => (
                     <span
                       key={i}
                       className={`block mx-auto text-center font-normal px-1 ${
-                        shift == i ? "border-1 border-black" : ""
+                        shift == i ? "border-none" : ""
                       }`}
                     >
                       {num}
@@ -250,10 +331,24 @@ const PDFTable = ({
               </td>
             </tr>
 
-            <tr>
-              <td colspan="1">DITULIS OLEH :</td>
+            <tr
+              style={{ border: "0px solid white" }}
+              className="border-collapse border-none "
+            >
+              <td
+                style={{ border: "0px solid white" }}
+                colspan="1"
+                className="border-collapse border-none "
+              >
+                DITULIS OLEH :
+              </td>
 
-              <td rowspan="2" colSpan="4" className="relative">
+              <td
+                style={{ border: "0px solid white" }}
+                rowspan="2"
+                colSpan="4"
+                className="relative border-collapse border-none"
+              >
                 PRO :
                 <Barcode
                   value={code}
@@ -262,8 +357,15 @@ const PDFTable = ({
               </td>
             </tr>
 
-            <tr>
-              <td colspan="1" className="text-center h-[30px]">
+            <tr
+              style={{ border: "0px solid white" }}
+              className="border-collapse border-none "
+            >
+              <td
+                style={{ border: "0px solid white" }}
+                colspan="1"
+                className="border-collapse border-none  text-center h-[30px]"
+              >
                 {staff ? staff.toUpperCase() : " "}
               </td>
             </tr>

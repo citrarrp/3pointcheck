@@ -4,10 +4,14 @@ import { AuthContext } from "../context/auth";
 
 const RequireAuth = ({ children }) => {
   const { user, loading } = useContext(AuthContext);
-  // console.log(user, loading);
+  console.log(user, loading, "cek user");
   if (loading) return <div>Loading...</div>;
 
-  return user ? children : <Navigate to="/login" />;
+  return String(user.dept).toLowerCase().includes("production") ? (
+    children
+  ) : (
+    <Navigate to="/login" />
+  );
 };
 
 export default RequireAuth;

@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema({
-  username: {
+  fullname: {
     type: String,
     required: true,
   },
@@ -9,10 +9,16 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  roles: {
+  npk: {
+    type: String,
+    required: true,
+  },
+  position: {
     type: String,
     // enum: ["user"]
-    required: true,
+  },
+  dept: {
+    type: String,
   },
 });
 

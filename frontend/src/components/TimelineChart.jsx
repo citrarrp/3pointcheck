@@ -39,7 +39,7 @@ const alwaysShowTooltipPlugin = {
         const x = point.x + 10;
         const y = point.y;
         const etd = moment(data.delay ? data.delay : data.x)
-          .tz("Asia/Jakarta")
+          // .tz("Asia/Jakarta")
           .format("HH:mm");
         const tooltipText = `${etd} (C${data.cycle})`;
 
@@ -133,7 +133,8 @@ const TimelineChart = ({
 
   const getDateToday = useCallback(
     (dateStr) => {
-      const parsed = new Date(dateStr);
+      const localStr = dateStr.replace("Z", "");
+      const parsed = new Date(localStr);
       const date = new Date(selectDate);
       date.setHours(parsed.getUTCHours(), parsed.getUTCMinutes(), 0, 0);
       return date;
@@ -545,7 +546,7 @@ const TimelineChart = ({
     chartRef.current?.resetZoom();
   };
 
-  moment.updateLocale("id", localization);
+  // moment.updateLocale("id", localization);
 
   // const ProgressItem = ({ label, count, color }) => {
   //   return (

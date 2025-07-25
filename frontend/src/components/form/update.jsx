@@ -305,6 +305,8 @@ function UpdateForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [dbCustomers, setDbCustomers] = useState([]);
 
+  const [availableCustomers, setAvailableCustomers] = useState([]);
+
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
@@ -313,6 +315,7 @@ function UpdateForm() {
         );
 
         if (result.data.success) {
+          console.log(result.data.data);
           setDbCustomers(result.data.data);
         }
       } catch (err) {
@@ -324,25 +327,43 @@ function UpdateForm() {
 
   useEffect(() => {
     const fetchExistingData = async () => {
+      console.log("disini customer", customerList);
       if (customerList.length === 0) return;
       setIsLoading(true);
       // console.log(customerList, "baru");
       try {
-        const promises = customerList.map(async (customer) => {
+        if (customerList.length === 1) {
           const { data } = await api.get(
             `${
               import.meta.env.VITE_BACKEND_URL
-            }/api/data/customer/${encodeURIComponent(customer)}`
+            }/api/data/customer/${encodeURIComponent(customerList[0])}`
           );
-          return data;
-        });
+          console.log(data, "ini customer");
 
-        const results = await Promise.all(promises);
-        setExistingCustomersData(results);
+          setExistingCustomersData(data);
 
-        if (results[0]?.success) {
-          setMapping(results[0].data.sourceValueLabel || {});
-          setSelectedColumns(results[0].data.selectedColumns || []);
+          if (data?.success) {
+            setMapping(data.data.sourceValueLabel || {});
+            setSelectedColumns(data.data.selectedColumns || []);
+          }
+        } else {
+          const promises = customerList.map(async (customer) => {
+            const { data } = await api.get(
+              `${
+                import.meta.env.VITE_BACKEND_URL
+              }/api/data/customer/${encodeURIComponent(customer)}`
+            );
+            return data;
+          });
+
+          const results = await Promise.all(promises);
+          setExistingCustomersData(results);
+          console.log(results, "apa isi hasol");
+
+          if (results[0]?.success) {
+            setMapping(results[0].data.sourceValueLabel || {});
+            setSelectedColumns(results[0].data.selectedColumns || []);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch existing data:", err);
@@ -395,7 +416,6 @@ function UpdateForm() {
         setExcelHeaders(jsonData[0] || []);
         setExcelData(XLSX.utils.sheet_to_json(worksheet));
         setShowTable(true);
-   
       } catch (error) {
         console.error("Error processing file:", error);
         alert("Invalid file format");
@@ -404,6 +424,19 @@ function UpdateForm() {
     reader.readAsBinaryString(file);
   };
 
+  useEffect(() => {
+    const loadSOD = async () => {
+      const data = await fetchSODDiagram();
+
+      const uniqueCustomers = [
+        ...new Set(data.map((item) => item.customerName.trim())),
+      ];
+      setAvailableCustomers(uniqueCustomers);
+    };
+
+    loadSOD();
+  }, []);
+
   const extractColon = (str) => {
     if (typeof str !== "string") return str;
     return str.includes(":") ? str.split(":").slice(1).join(":").trim() : str;
@@ -411,9 +444,11 @@ function UpdateForm() {
 
   const normalize = (str) => {
     if (typeof str !== "string") return str;
+
     return str
       .toString()
       .toLowerCase()
+      .split("/")[0]
       .replace(/[-_]+/g, " ")
       .replace(/([a-zA-Z])(\d)/g, "$1 $2") // pisahin huruf dan angka
       .replace(/\s+/g, " ") //spasi ga double
@@ -421,13 +456,17 @@ function UpdateForm() {
   };
 
   useEffect(() => {
-    if (!excelData.length || !dbCustomers.length) return;
+    console.log("keisi", excelData, dbCustomers);
+    if (excelData.length === 0 || dbCustomers.length === 0) return;
 
     let detectedCol = null;
     const matchedCustomers = new Set();
 
     dbCustomers.forEach((item) => {
       const col = item.selectedCustomer;
+      if (col === "") return;
+
+      console.log(item, "db customer");
       const namaCust = normalize(item.nama);
 
       const isColExist = excelData.some((row) => row[col] !== undefined);
@@ -436,11 +475,17 @@ function UpdateForm() {
 
       const hasMatch = excelData.some((row) => {
         const val = row[col];
-        return normalize(val).includes(namaCust);
+
+        console.log(val, "isi baild");
+        return (
+          normalize(val)?.includes(namaCust) ||
+          namaCust.includes(normalize(val))
+        );
       });
 
       if (hasMatch) {
         detectedCol = col;
+        console.log(col);
 
         excelData.forEach((row, i) => {
           // console.log(`Row ${i}:`, row);
@@ -449,7 +494,11 @@ function UpdateForm() {
 
           dbCustomers.forEach((cust) => {
             const name = normalize(cust.nama);
-            if (normalize(val).includes(name)) {
+            if (
+              normalize(val).includes(name) ||
+              name.includes(normalize(val))
+            ) {
+              console.log(cust.nama, val, "cekaa");
               matchedCustomers.add(cust.nama);
             }
           });
@@ -478,152 +527,385 @@ function UpdateForm() {
   }, [excelData, selectedCustomerCol, dbCustomers, filterData]);
 
   const handleUpdate = async () => {
-    if (!existingCustomersData.length || !excelData.length) return;
+    console.log(
+      "bisa update ga",
+      typeof existingCustomersData,
+      typeof excelData
+    );
+    if (
+      !Array.isArray(excelData) ||
+      !existingCustomersData ||
+      excelData.length === 0
+    )
+      return;
     try {
       setIsLoading(true);
-
+      console.log("masuk");
       const formatValue = (val) => {
+        console.log(val, "value", typeof val);
         if (val instanceof Date && !isNaN(val)) {
-          return moment(val).tz("Asia/Jakarta").format("DDMMYYYY");
+          return moment(val).tz("Asia/Jakarta");
         }
 
+        // const trimmedVal = typeof val === "string" ? val.trim() : val;
+
+        // console.log(trimmedVal, "edit");
         const parsedDate = moment.tz(
           val,
-          ["DD/MM/YYYY", "YYYY-MM-DD", moment.ISO_8601],
+          [
+            "DD/MM/YYYY",
+            "YYYY-MM-DD",
+            "D/M/YYYY",
+            "DD-MM-YYYY",
+            "D-M-YYYY",
+            "DD.MM.YYYY",
+            "DD.MM.YY",
+            "D.M.YY",
+            "D.M.YYYY",
+            "MMMM D, YYYY",
+            "D MMMM YYYY",
+            "D MMM YYYY",
+            moment.ISO_8601,
+          ],
           true,
           "Asia/Jakarta"
         );
-        return parsedDate.isValid() ? parsedDate.format("DDMMYYYY") : val ?? "";
+        // console.log(parsedDate, "tadikedini", parsedDate.isValid());
+        if (parsedDate.isValid()) {
+          // console.log(parsedDate.toDate() instanceof Date, "Date?");
+          return parsedDate.toDate();
+        }
+
+        return val;
       };
+
       const dataSOD = await fetchSODDiagram();
-      const updatePromises = customerList.map(async (customer) => {
+
+      if (customerList.length === 1) {
+        const customer = customerList[0];
+
         const stepCycle = dataSOD.filter((item) =>
           item.customerName.includes(customer)
         );
-        // console.log(
-        //   dataSOD.filter((item) => item.customerName.includes(customer))
-        // );
- 
-        // console.log(
-        //   existingCustomersData ? existingCustomersData : 0,
-        //   "data customer",
-        //   customerList
-        // );
-      
-        const customerData = existingCustomersData.find((c) =>
-          c.data.nama.toLowerCase().includes(customer.toLowerCase())
-        );
 
+        const customerData = existingCustomersData;
+
+        console.log(customerData, "ada customer inilah");
         if (!customerData) {
-          return { success: false, message: `Data not found for ${customer}` };
-        }
+          return Promise.resolve({
+            success: false,
+            message: `Data not found for ${customer}`,
+          });
+        } else {
+          const separator = customerData.data.separator;
 
-        const filteredData = excelData.filter((row) => {
-          const customerFieldValue = row[selectedCustomerCol];
-          if (!customerFieldValue) return;
+          // const selectedData = excelData.map((row) => {
+          //   const values = selectedColumns
+          //     .map((col) => formatValue(row[col]))
+          //     .map((val) => extractColon(val));
+          //   return values.join(separator ?? "");
+          // });
 
-          const normalized = customerFieldValue.toString().toLowerCase();
+          // const selectedData = excelData.map((row) => {
+          //   console.log("kesini", selectedColumns);
+          //   const values = selectedColumns
+          //     .filter((_, index) => index !== 0) // ambil index genap
+          //     .map((col) => formatValue(row[col]))
+          //     .map((val) => extractColon(val));
 
-          return (
-            normalized.includes(customer.toLowerCase()) ||
-            normalized.replace(/-/g, " ").includes(customer.toLowerCase())
+          //   return values.join(separator ?? "");
+          // });
+          const selectedData = excelData.map((row) => {
+            console.log("kesini", selectedColumns);
+
+            const values = selectedColumns
+              .filter((_, index) => index !== 0) // skip kolom pertama
+              .map((col) => {
+                let value = formatValue(row[col]);
+
+                if (col === "order_delivery") {
+                  const match = value.match(/OD\s+([A-Z0-9]+)/i);
+                  if (match) {
+                    value = match[1];
+                  } else {
+                    value = value.trim().split(" ").pop().replace(/\W+$/, "");
+                  }
+                } else {
+                  value = extractColon(value);
+                }
+
+                return value;
+              });
+
+            console.log(values, "nilai select");
+            return values.join(separator ?? "");
+          });
+
+          const KolomSelected = excelData.map((row) =>
+            Object.entries(mapping).reduce((acc, [schema, excelCol]) => {
+              if (!Object.hasOwn(mapping, "delivery_cycle")) {
+                acc["delivery_cycle"] = 1;
+              }
+              let val = row[excelCol] ?? null;
+              if (typeof val === "string" && val.includes(":")) {
+                val = val.split(":")[1]?.trim() ?? val;
+              }
+              acc[schema] = extractColon(val);
+
+              if (schema === "delivery_date" || schema === "order_date") {
+                console.log(typeof val, val);
+                console.log(formatValue(val));
+                acc[schema] = formatValue(val); // hanya format di sini
+              }
+              if (schema === "order_delivery") {
+                const match = acc[schema].match(/OD\s+([A-Z0-9]+)/i);
+                if (match) {
+                  acc[schema] = match[1];
+                } else {
+                  acc[schema] = acc[schema]
+                    .trim()
+                    .split(" ")
+                    .pop()
+                    .replace(/\W+$/, "");
+                }
+              }
+              return acc;
+            }, {})
           );
-        });
 
-    
-        const separator = customerData.data.separator;
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
 
-        // const selectedData = filteredData.map((row) =>
+          const payload = {
+            kolomSelected: {
+              data: KolomSelected,
+              createdAt: tomorrow,
+              selectedData,
+            },
+            matchedCycle: stepCycle,
+          };
 
-        //   selectedColumns
-        //     .map((col) => formatValue(row[col]))
-        //     .map((val) => extractColon(val))
-        //     .join(separator)
-        // );
-
-        const selectedData = filteredData.map((row) => {
-          const values = selectedColumns
-            .map((col) => formatValue(row[col]))
-            .map((val) => extractColon(val));
-
-          return separator !== "" || undefined
-            ? values.join(separator)
-            : values.join(""); // join("") gabung tanpa spasi
-        });
-
-        // const selectedData = filteredData.map((row) =>
-        //   selectedColumns
-        //     .map((col) => {
-        //       const val = formatValue(row[col]);
-        //       return separator !== "" ? extractColon(val) : val;
-        //     })
-        //     .join(separator)
-        // );
-
-        const KolomSelected = filteredData.map((row) =>
-          Object.entries(mapping).reduce((acc, [schema, excelCol]) => {
-       
-            if (!Object.hasOwn(mapping, "delivery_cycle")) {
-              acc["delivery_cycle"] = 1; // Nilai default 1
+          const response = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/api/data/${
+              customerData.data._id
+            }`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
             }
-            let val = row[excelCol] ?? null;
-            if (typeof val === "string" && val.includes(":")) {
-              val = val.split(":")[1]?.trim() ?? val;
-            }
-            acc[schema] = extractColon(val);
+          );
 
-            return acc;
-          }, {})
-        );
+          const res = await response.json();
 
-        const today = new Date();
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1);
-
-        // console.log(
-        //   KolomSelected,
-        //   typeof KolomSelected,
-
-        //   "apa kai",
-        //   mapping
-        // );
-
-        const payload = {
-          kolomSelected: {
-            data: KolomSelected,
-            createdAt: tomorrow,
-            selectedData,
-          },
-          matchedCycle: stepCycle,
-          // selectedData,
-        };
-
-        // console.log(payload, "ini");
-        const res = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/data/${
-            customerData.data._id
-          }`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
+          console.log(res, "berhasil");
+          if (res.success) {
+            alert("Data berhasil diupdate untuk semua customer!");
+          } else {
+            alert(`Update gagal untuk customer ${customerData.data.nama}`);
           }
-        );
-
-        return res.json();
-      });
-
-      // console.log(updatePromises, "ada");
-
-      const results = await Promise.all(updatePromises);
-      const allSuccess = results.every((r) => r.success);
-
-      // console.log(results);
-      if (allSuccess) {
-        alert("Data berhasil diupdate untuk semua customer!");
+        }
       } else {
-        const errors = results.filter((r) => !r.success).map((r) => r.message);
-        alert(`Beberapa update gagal:\n${errors.join("\n")}`);
+        const updatePromises = customerList.map(async (customer, index) => {
+          const stepCycle = dataSOD.filter((item) =>
+            item.customerName.includes(customer)
+          );
+          // console.log(
+          //   dataSOD.filter((item) => item.customerName.includes(customer))
+          // );
+
+          // console.log(
+          //   existingCustomersData ? existingCustomersData : 0,
+          //   "data customer",
+          //   customerList
+          // );
+
+          const customerData = existingCustomersData.find((c) =>
+            c.data.nama.toLowerCase().includes(customer.toLowerCase())
+          );
+
+          if (!customerData) {
+            return {
+              success: false,
+              message: `Data not found for ${customer}`,
+            };
+          }
+
+          console.log(existingCustomersData, customer, "data ad");
+
+          const filteredData = excelData.filter((row) => {
+            const customerFieldValue = row[selectedCustomerCol];
+            console.log(customerFieldValue, "field cust");
+            if (!customerFieldValue) return;
+
+            console.log("disini");
+            const normalized = normalize(
+              customerFieldValue.toString().toLowerCase()
+            );
+
+            return (
+              normalized.includes(customer.toLowerCase()) ||
+              normalized.replace(/-/g, " ").includes(customer.toLowerCase()) ||
+              customer
+                .toLowerCase()
+                .includes(normalized.replace(/-/g, " ").toLowerCase()) ||
+              customer
+                .toLowerCase()
+                .replace(/\s/g, "")
+                .includes(normalized.replace(/-/g, "").toLowerCase())
+            );
+          });
+
+          const separator = customerData.data.separator;
+
+          // const selectedData = filteredData.map((row) =>
+
+          //   selectedColumns
+          //     .map((col) => formatValue(row[col]))
+          //     .map((val) => extractColon(val))
+          //     .join(separator)
+          // );
+
+          // const selectedData = filteredData.map((row) => {
+          //   const values = selectedColumns
+          //     .map((col) => formatValue(row[col]))
+          //     .map((val) => extractColon(val));
+
+          //   return values.join(separator ?? ""); // join("") gabung tanpa spasi
+          // });
+
+          // const selectedData = filteredData.map((row) => {
+          //   const values = selectedColumns
+          //     .filter((_, index) => index % 2 !== 0) // ambil index genap
+          //     .map((col) => formatValue(row[col]))
+          //     .map((val) => extractColon(val));
+
+          //   return values.join(separator ?? "");
+          // });
+
+          const selectedData = filteredData.map((row) => {
+            console.log("kesini", selectedColumns);
+
+            const values = selectedColumns
+              .filter((_, index) => index !== 0) // skip kolom pertama
+              .map((col) => {
+                let value = formatValue(row[col]);
+
+                if (col === "order_delivery") {
+                  const match = value.match(/OD\s+([A-Z0-9]+)/i);
+                  if (match) {
+                    value = match[1];
+                  } else {
+                    value = value.trim().split(" ").pop().replace(/\W+$/, "");
+                  }
+                } else {
+                  value = extractColon(value);
+                }
+
+                return value;
+              });
+
+            console.log(values, "nilai select");
+            return values.join(separator ?? "");
+          });
+
+          console.log(selectedData, filteredData, "ini dikirim");
+
+          // const selectedData = filteredData.map((row) =>
+          //   selectedColumns
+          //     .map((col) => {
+          //       const val = formatValue(row[col]);
+          //       return separator !== "" ? extractColon(val) : val;
+          //     })
+          //     .join(separator)
+          // );
+
+          const KolomSelected = filteredData.map((row) =>
+            Object.entries(mapping).reduce((acc, [schema, excelCol]) => {
+              if (!Object.hasOwn(mapping, "delivery_cycle")) {
+                acc["delivery_cycle"] = 1; // Nilai default 1
+              }
+              let val = row[excelCol] ?? null;
+              if (typeof val === "string" && val.includes(":")) {
+                val = val.split(":")[1]?.trim() ?? val;
+              }
+              acc[schema] = extractColon(val);
+
+              if (schema === "delivery_date" || schema === "order_date") {
+                console.log(
+                  formatValue(acc[schema]),
+                  typeof formatValue(acc[schema])
+                );
+                acc[schema] = formatValue(acc[schema]); // hanya format di sini
+              }
+              if (schema === "order_delivery") {
+                const match = acc[schema].match(/OD\s+([A-Z0-9]+)/i);
+                if (match) {
+                  acc[schema] = match[1];
+                } else {
+                  acc[schema] = acc[schema]
+                    .trim()
+                    .split(" ")
+                    .pop()
+                    .replace(/\W+$/, "");
+                }
+              }
+              return acc;
+            }, {})
+          );
+
+          const today = new Date();
+          const tomorrow = new Date(today);
+          tomorrow.setDate(today.getDate() + 1);
+
+          // console.log(
+          //   KolomSelected,
+          //   typeof KolomSelected,
+
+          //   "apa kai",
+          //   mapping
+          // );
+
+          const payload = {
+            kolomSelected: {
+              data: KolomSelected,
+              createdAt: tomorrow,
+              selectedData,
+            },
+            matchedCycle: stepCycle,
+            // selectedData,
+          };
+
+          console.log(payload, "ini", index);
+          const res = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/api/data/${
+              customerData.data._id
+            }`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            }
+          );
+
+          return res.json();
+        });
+
+        // console.log(updatePromises, "ada");
+
+        const results = await Promise.all(updatePromises);
+        console.log(results, "plis");
+        const allSuccess = results.every((r) => r.success);
+
+        // console.log(results);
+        if (allSuccess) {
+          alert("Data berhasil diupdate untuk semua customer!");
+        } else {
+          const errors = results
+            .filter((r) => !r.success)
+            .map((r) => r.message);
+          alert(`Beberapa update gagal:\n${errors.join("\n")}`);
+        }
       }
     } catch (err) {
       console.error("Update error:", err);
@@ -654,6 +936,48 @@ function UpdateForm() {
           disabled={isLoading}
         />
       </div>
+
+      {fileName && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 p-4">
+          {availableCustomers.map((name, idx) => (
+            <div
+              key={idx}
+              className="flex items-center p-2 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <label className="flex items-center cursor-pointer w-full">
+                <input
+                  type="checkbox"
+                  value={name}
+                  checked={customerList.includes(name)}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    const value = e.target.value;
+                    setCustomerList((prev) =>
+                      checked
+                        ? [...prev, value]
+                        : prev.filter((n) => n !== value)
+                    );
+                  }}
+                  className="
+            appearance-none w-5 h-5 border-2 border-blue-600 rounded 
+            mr-3 cursor-pointer relative flex items-center justify-center
+            checked:bg-blue-600 checked:border-blue-600
+            hover:border-blue-700 focus:ring-2 focus:ring-blue-200
+            focus:outline-none transition-colors
+            before:content-[''] before:absolute before:bg-white
+            before:w-[6px] before:h-[10px] before:border-r-2 before:border-b-2
+            before:border-white before:rotate-45 before:opacity-0
+            before:checked:opacity-100 before:-mt-[2px]
+          "
+                />
+                <span className="text-blue-600 text-sm font-medium select-none">
+                  {name}
+                </span>
+              </label>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Customer Info */}
       {/* {fileName && (
@@ -691,7 +1015,7 @@ function UpdateForm() {
       )} */}
 
       {/* Data Preview */}
-      {showTable && (
+      {showTable && customerList.length > 0 && (
         <div className="mb-4">
           <h3 className="font-medium mb-2">Preview Data</h3>
           <div className="max-h-100 overflow-auto border rounded">
@@ -742,9 +1066,9 @@ function UpdateForm() {
           onClick={handleUpdate}
           disabled={
             isLoading ||
-            !excelData.length ||
-            !selectedColumns.length ||
-            (customerList.length > 1 && !selectedCustomerCol)
+            excelData.length === 0 ||
+            selectedColumns.length < 1 ||
+            !selectedCustomerCol
           }
           className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 disabled:bg-blue-300 text-sm"
         >

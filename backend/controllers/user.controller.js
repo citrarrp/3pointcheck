@@ -5,15 +5,27 @@ import mongoose from "mongoose";
 
 export const generateAccessToken = (user) => {
   return jwt.sign(
-    { id: user.id, username: user.username, roles: user.roles },
+    {
+      id: user.id,
+      npk: user.npk,
+      fullname: user.fullname,
+      position: user.position,
+      dept: user.dept,
+    },
     process.env.SECRET_ACCESS_TOKEN,
-    { expiresIn: "3h" }
+    { expiresIn: "1h" }
   );
 };
 
 export const generateRefreshToken = (user) => {
   return jwt.sign(
-    { id: user.id, username: user.username, roles: user.roles },
+    {
+      id: user.id,
+      npk: user.npk,
+      fullname: user.fullname,
+      position: user.position,
+      dept: user.dept,
+    },
     process.env.REFRESH_TOKEN,
     {
       expiresIn: "7d",
@@ -22,12 +34,14 @@ export const generateRefreshToken = (user) => {
 };
 
 export const getUser = async (req, res) => {
-  const { roles } = req.query;
+  const { position } = req.query;
   try {
     let filter = {};
 
-    if (roles) {
-      filter.roles = { $in: Array.isArray(roles) ? roles : [roles] };
+    if (position) {
+      filter.position = {
+        $in: Array.isArray(position) ? position : [position],
+      };
     }
     const fields = await user.find(filter);
     res
@@ -52,11 +66,6 @@ export const deleteUser = async (req, res) => {
       throw new Error("Invalid user ID format");
     }
 
-    // if (req.user.id === id) {
-    //   res.status(400);
-    //   throw new Error("You cannot delete your own account this way");
-    // }
-    // await user.remove();
     await user.findByIdAndDelete(id);
     res.status(200).json({ success: true, message: "User berhasil dihapus!" });
   } catch (error) {
@@ -64,22 +73,6 @@ export const deleteUser = async (req, res) => {
     res.status(500).json({ success: false, message: "Server Error" });
   }
 };
-// export const getUserId = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const userData = await user.findOne({ where: { id } });
-//     if (!userData) {
-//       return res
-//         .status(404)
-//         .json({ success: false, message: "User not found" });
-//     }
-//     res.status(200).json({ success: true, data: fields });
-//   } catch (error) {
-//     console.log("error in fetching Label Fields:", error.message);
-//     res.status(500).json({ success: false, message: "Server Error" });
-//   }
-// };
-
 function getLocalISODate() {
   const now = new Date();
   const offset = now.getTimezoneOffset() * 60000;
@@ -92,15 +85,21 @@ export const createUser = async (req, res) => {
     return res.status(400).json({ message: "Request body is missing" });
   }
 
-  const { username, password, roles } = req.body;
-  const salt = await bcrypt.genSalt(10);
+  const { fullname, npk, password, position, dept } = req.body;
+  const salt = await bcrypt.genSalt(12);
   const hashedPassword = await bcrypt.hash(password, salt);
 
   try {
-    let User = await user.findOne({ username });
+    let User = await user.findOne({ fullname, npk });
     if (User) return res.status(400).json({ message: "User already exists" });
 
-    User = new user({ username, password: hashedPassword, roles });
+    User = new user({
+      fullname,
+      npk,
+      password: hashedPassword,
+      position,
+      dept,
+    });
     await User.save();
 
     return res
@@ -114,19 +113,45 @@ export const createUser = async (req, res) => {
   }
 };
 
-export const loginUser = async (req, res) => {
-  const { username, password } = req.body;
+export const updatePassword = async (req, res) => {
+  const { userId } = req.params;
+  const { oldPassword, newPassword } = req.body;
 
   try {
-    const existingUser = await user.findOne({ username: username });
+    const User = await user.findById(userId);
+    if (!User)
+      return res.status(404).json({ message: "User Tidak Ditemukan!" });
+
+    const isMatch = await bcrypt.compare(oldPassword, User.password);
+    if (!isMatch)
+      return res.status(400).json({ message: "Password Lama Tidak Sesuai!" });
+
+    const salt = await bcrypt.genSalt(12);
+    User.password = await bcrypt.hash(newPassword, salt);
+    await User.save();
+
+    res
+      .status(200)
+      .json({ success: true, message: "Password Berhasil Diperbarui!" });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ success: false, message: "Server error", error: err.message });
+  }
+};
+
+export const loginUser = async (req, res) => {
+  const { npk, password } = req.body;
+
+  try {
+    const existingUser = await user.findOne({ npk });
+    console.log(existingUser);
     if (!existingUser) {
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
     }
-
     const isMatch = await bcrypt.compare(password, existingUser.password);
-
     if (!isMatch) {
       return res
         .status(401)
@@ -138,20 +163,20 @@ export const loginUser = async (req, res) => {
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: false,
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      sameSite: "Strict",
+      sameSite: "Lax",
     });
-
+    console.log(refreshToken, "ada toeken refresh");
     res.status(200).json({
       success: true,
       data: {
         accessToken,
-        existingUser: {
-          id: existingUser._id,
-          username: existingUser.username,
-          role: existingUser.roles,
-        },
+        // existingUser: {
+        //   id: existingUser._id,
+        //   fullname: existingUser.fullname,
+        //   role: existingUser.roles,
+        // },
       },
     });
   } catch (error) {
@@ -163,13 +188,29 @@ export const loginUser = async (req, res) => {
 };
 
 export const refreshAccessToken = (req, res) => {
+  console.log("Cookies from client:", req.cookies);
+  console.log("refreshToken:", req.cookies.refreshToken);
   const token = req.cookies.refreshToken;
   if (!token) return res.status(401).json({ message: "No token" });
 
-  jwt.verify(token, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
+  jwt.verify(token, process.env.REFRESH_TOKEN, (err, user) => {
     if (err) return res.status(403).json({ message: "Invalid refresh token" });
 
     const newAccessToken = generateAccessToken(user);
     res.status(200).json({ accessToken: newAccessToken });
+  });
+};
+
+export const logoutUser = async (req, res) => {
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: false,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    sameSite: "Lax",
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Sukses logout",
   });
 };

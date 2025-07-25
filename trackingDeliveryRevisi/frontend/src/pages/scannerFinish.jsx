@@ -10,6 +10,7 @@ export default function ScanFinishPage() {
   const submitScan = async (data) => {
     try {
       const response = await api.put("/track/ready", { code: data });
+      console.log(response.data, "response nih");
       setResult(response.data.data);
       // setShowScanner(false);
       alert(response.data.message);

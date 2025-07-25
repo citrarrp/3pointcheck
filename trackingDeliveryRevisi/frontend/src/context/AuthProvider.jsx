@@ -105,10 +105,10 @@ const AuthProvider = ({ children }) => {
   // }
   // }, [token]);
 
-  const login = async (username, password) => {
+  const login = async (fullname, password) => {
     try {
       const res = await api.post("/user/auth/login", {
-        username,
+        fullname,
         password,
       });
       const { accessToken, existingUser } = res.data.data;

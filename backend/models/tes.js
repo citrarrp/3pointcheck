@@ -79,9 +79,31 @@ const TesSchema = new mongoose.Schema({
     type: [String],
     required: true,
   },
+  dataReal: {  
+    kanban: {
+      type: String,
+      default: ""
+    },
+    kanbanlength: {
+      type: Number,
+      default: 0
+    },
+    labelSupplier: {
+      type: String,
+      default: ""
+    },
+    labelLength: {
+      type: Number,
+      default: 0
+    }
+  },
   selectedCustomer: {
     type: String,
     default: "",
+  },
+  selectedFields: {
+    type: [String],
+    required: true,
   },
   lastUpdated: {
     type: Date,

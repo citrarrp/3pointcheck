@@ -393,28 +393,89 @@ export default function DataTrackingTable() {
     }));
   }
 
-  const handleCheckboxChange = (proses, dn, item) => (e) => {
-    const isChecked = e.target.checked || (item.waktuAktual ? true : false);
-    const now = new Date();
-    const formattedTime = now.toLocaleTimeString("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
+  // const handleCheckboxChange = (proses, dn, item) => (e) => {
+  //   const isChecked = e.target.checked || (item.waktuAktual ? true : false);
+  //   const now = new Date();
+  //   if (item?.waktuAktual) return;
 
-    const key = `${proses}-${dn}`;
+  //   const formattedTime = now.toLocaleTimeString("en-GB", {
+  //     hour: "2-digit",
+  //     minute: "2-digit",
+  //     hour12: false,
+  //   });
+
+  //   const key = `${proses}-${dn}`;
+  //   setProcesses((prev) => ({
+  //     ...prev,
+  //     [key]: {
+  //       checked: true,
+  //       ...prev[key],
+  //       time: isChecked ? formattedTime : "",
+  //       delay: "",
+  //       status: "",
+  //     },
+  //   }));
+
+  //   getDelay(item, proses, dn, isChecked, formattedTime);
+  // };
+  const handleCheckboxChange = (prosesName, dnNumber, item) => async (e) => {
+    const isChecked = e.target.checked;
+    const key = `${prosesName}-${dnNumber}`;
+
+    if (item?.waktuAktual) return;
+
+    if (isChecked) {
+      const formattedTime = moment().format("YYYY-MM-DD HH:mm:ss");
+
+      const waktuStandar = moment(item.waktuStandar);
+      const waktuAktual = moment(formattedTime);
+      const diffMinutes = waktuAktual.diff(waktuStandar, "minutes");
+
+      let delayText = "";
+      let status = "";
+
+      if (diffMinutes > 0) {
+        delayText = `-${diffMinutes} menit`;
+        status = "Delay";
+      } else if (diffMinutes < 0) {
+        delayText = `+${Math.abs(diffMinutes)} menit`;
+        status = "Advanced";
+      } else {
+        delayText = "0 menit";
+        status = "On Time";
+      }
+
+      setProcesses((prev) => ({
+        ...prev,
+        [key]: {
+          checked: true,
+          ...prev[key],
+          time: formattedTime,
+          delay: delayText,
+          status: status,
+        },
+      }));
+
+      try {
+        await api.post("/track/check", {
+          dn: dnNumber,
+          proses: prosesName,
+          waktuAktual: formattedTime,
+          delay: delayText,
+          status: status,
+        });
+      } catch (err) {
+        console.error("Gagal kirim ke /track:", err);
+      }
+    }
+
     setProcesses((prev) => ({
       ...prev,
       [key]: {
-        checked: true,
         ...prev[key],
-        time: isChecked ? formattedTime : "",
-        delay: "",
-        status: "",
+        checked: isChecked,
       },
     }));
-
-    getDelay(item, proses, dn, isChecked, formattedTime);
   };
 
   const proses = [
@@ -605,7 +666,8 @@ export default function DataTrackingTable() {
                           <td className="px-4 py-3  text-sm text-gray-500">
                             <input
                               type="checkbox"
-                              className={"h-4 w-4 text-blue-600 rounded"}
+                              className={"h-4 w-4 text-[#105bdf] rounded"}
+                              disabled={!!item?.waktuAktual}
                               // onChange={(e) => {
                               //   const isChecked = e.target.checked;
                               //   const newSelected = isChecked
@@ -664,7 +726,7 @@ export default function DataTrackingTable() {
                                   : processes[`${prosesName}-${dnNumber}`]
                                       ?.status === "Advanced" ||
                                     item?.status === "Advanced"
-                                  ? "bg-blue-100 text-blue-800"
+                                  ? "bg-blue-100 text-[#105bdf]"
                                   : "bg-gray-100 text-gray-800"
                               }`}
                             >

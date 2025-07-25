@@ -252,8 +252,8 @@ const Cetaklabel = ({ data, qty, date, code, sequenceFirst, separator }) => {
                     >
                       <option value="">Pilih Nama</option>
                       {users.map((user, id) => (
-                        <option key={id} value={user.username}>
-                          {user.username}
+                        <option key={id} value={user.fullname}>
+                          {user.fullname}
                         </option>
                       ))}
                     </select>

@@ -114,6 +114,7 @@ import moment from "moment-timezone";
 const Cetaklabel = ({ data, qty, date, code, sequenceFirst, separator }) => {
   const [shouldPrint, setShouldPrint] = useState(false);
   const [users, setUsers] = useState([]);
+  const [tableComponent, setTableComponent] = useState(null);
 
   const checkProsesSekarang = async () => {
     const now = moment();
@@ -141,7 +142,7 @@ const Cetaklabel = ({ data, qty, date, code, sequenceFirst, separator }) => {
     try {
       const proses = await checkProsesSekarang();
       const res = await api.get(
-        "/user?roles=production-user&roles=production-admin"
+        "/user?position=production-user&position=production-admin"
       );
       setUsers(res.data.data || []);
     } catch (err) {
@@ -183,7 +184,28 @@ const Cetaklabel = ({ data, qty, date, code, sequenceFirst, separator }) => {
   const shift = watch("shift") || null;
   // console.log(sequenceFirst, "seq");
 
-  const onSubmit = () => {
+  // const onSubmit = () => {
+  //   setShouldPrint(true);
+
+  // const printDiv = useRef();
+  const handlePrint = () => {
+    const text = printDiv.current.innerText;
+    window.imin?.printText(text); // jika dari iMin WebView
+  };
+
+  const onSubmit = (formData) => {
+    setTableComponent(
+      <PDFTable
+        data={data}
+        qty={qty}
+        code={code}
+        shift={formData.shift}
+        staff={formData.PIC}
+        sequence={formData.sequenceNo}
+        FirstSeq={Number(sequenceFirst)}
+        pembagi={separator}
+      />
+    );
     setShouldPrint(true);
   };
 
@@ -192,9 +214,19 @@ const Cetaklabel = ({ data, qty, date, code, sequenceFirst, separator }) => {
   }, []);
 
   useEffect(() => {
+    // if (shouldPrint) {
+    //   reactToPrintFn();
+    //   setShouldPrint(false);
+    //   setTableComponent(null);
+    // }
     if (shouldPrint) {
-      reactToPrintFn();
-      setShouldPrint(false);
+      const timeoutId = setTimeout(() => {
+        reactToPrintFn();
+        setShouldPrint(false);
+        setTableComponent(null); // Sembunyikan lagi setelah print
+      }, 1000); // 1 detik delay untuk preview
+
+      return () => clearTimeout(timeoutId); // bersihkan timeout jika perlu
     }
   }, [shouldPrint]);
 
@@ -252,8 +284,8 @@ const Cetaklabel = ({ data, qty, date, code, sequenceFirst, separator }) => {
                     >
                       <option value="">Pilih Nama</option>
                       {users.map((user, id) => (
-                        <option key={id} value={user.username}>
-                          {user.username}
+                        <option key={id} value={user.fullname}>
+                          {user.fullname}
                         </option>
                       ))}
                     </select>
@@ -300,8 +332,12 @@ const Cetaklabel = ({ data, qty, date, code, sequenceFirst, separator }) => {
                   >
                     Print
                   </button>
-
                   <div ref={contentRef} className="w-full m-10">
+                    {tableComponent}
+                  </div>
+
+                  {/* <div ref={contentRef} className="w-full m-10">
+                   
                     <PDFTable
                       data={data}
                       qty={qty}
@@ -313,7 +349,7 @@ const Cetaklabel = ({ data, qty, date, code, sequenceFirst, separator }) => {
                       FirstSeq={Number(sequenceFirst)}
                       pembagi={separator}
                     />
-                  </div>
+                  </div> */}
                 </div>
                 {/* <PDFTable
                   // data={data}

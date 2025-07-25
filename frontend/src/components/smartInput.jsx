@@ -6,35 +6,41 @@ import { useParams } from "react-router";
 import api from "../utils/api";
 import QRCode from "react-qr-code";
 import axios from "axios";
-import {
-  MdFileCopy,
-  MdOutlineDoNotDisturbOnTotalSilence,
-} from "react-icons/md";
+import { MdFileCopy } from "react-icons/md";
+import { useContext } from "react";
+import { SidebarContext } from "../context/sidebar-context";
+import { GiHamburgerMenu } from "react-icons/gi";
 export default function SmartInputLoop() {
   const { id } = useParams();
-  // console.log(id);
   const [rows, setRows] = useState(() =>
     Array.from({ length: 20 }, () => ({ kanban: "", labelSupplier: "" }))
   );
   const inputRefs = useRef([]);
   const [validList, setValidList] = useState([]);
+  const [partListReal, setValidPart] = useState([]);
   const [jumlahKanban, setValidKanban] = useState({});
   const [selectedData, setSelectedData] = useState([]);
   const [Data, setData] = useState([]);
   const [createdAtList, setCreatedAtList] = useState([]);
   const [fullData, setFullData] = useState([]);
+  const [uniqueColumn, setSelectedColumn] = useState([]);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [summaryTable, setSummaryTable] = useState([]);
-  const [orderQty, setJumlahOrder] = useState({});
+  // const [orderQty, setJumlahOrder] = useState({});
   const [endDN, setSudahSelesai] = useState({});
   const [selectedDate, setSelectedDate] = useState(null);
-  const [allDnClosed, setAllDnClosed] = useState(false);
+  // const [allDnClosed, setAllDnClosed] = useState(false);
   const [shift, setShift] = useState(null);
   const [waktuAktual, setWaktuAktual] = useState(null);
   const [qrCodes, setqrCodes] = useState([]);
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [kanban, setKanban] = useState(null);
   const [shouldAutoFocus, setShouldAutoFocus] = useState(false);
+  const { isOpen, setIsOpen } = useContext(SidebarContext);
+  const [cycleFilter, setCycleFilter] = useState("");
+  const [shiftWaktuMap, setShiftWaktuMap] = useState({});
+  const [separator, setSeparator] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -51,6 +57,9 @@ export default function SmartInputLoop() {
           )
         );
         setFullData(data.data.kolomSelected);
+        setSeparator(data.data.separator);
+        // console.log(data, data.data.selectedColumns, "data dapat");
+        setSelectedColumn(data.data.selectedColumns);
         setKanban(data.data.kanban);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -71,6 +80,82 @@ export default function SmartInputLoop() {
       console.error("Error in fetch shift", error);
     }
   };
+
+  function normalizeText(str, sep) {
+    if (!str || typeof str !== "string") return "";
+
+    if (!sep) return str.replace("/[.*+?^${}()|[]\\]/g", "").toLowerCase();
+    const escapedSep = sep.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    const regex = new RegExp(escapedSep, "g");
+
+    return str.replace(regex, "").toLowerCase();
+  }
+
+  function matchEntryWithMergedData(
+    dataArray,
+    row,
+    startDate,
+    endDate,
+    pemisah
+  ) {
+    const kanban = row.kanban?.toLowerCase();
+    const supplier = row.labelSupplier?.toLowerCase();
+
+    for (const item of dataArray) {
+      const dDate = new Date(item.delivery_date);
+      const selected = normalizeText(
+        item.selectedData?.toLowerCase() || "",
+        pemisah
+      );
+      const cycle = item?.delivery_cycle;
+
+      console.log(selected, "ini select");
+
+      const kanbanMatch = kanban && kanban.includes(selected);
+      console.log(kanbanMatch, kanban, selected, supplier, "sama");
+      const supplierMatch =
+        supplier &&
+        supplier !== kanban &&
+        (supplier.includes(selected) ||
+          selected.includes(supplier) ||
+          supplier.includes(item?.material));
+
+      // const job = uniqueColumn
+      //   .map((col) => item?.[col])
+      //   .filter(Boolean)
+      //   .join("_");
+      // // .toLowerCase();
+      // console.log(job, "unik", supplierMatch);
+
+      const key = `${item.dn_number}_${item.selectedData}_${cycle}`;
+      console.log(key);
+      const jumlah = jumlahKanban?.[key] || 0;
+      const batas = endDN?.[key] || 0;
+      console.log(jumlah, batas, key, "batasan kanban", jumlah, batas);
+
+      if (
+        kanbanMatch &&
+        supplierMatch &&
+        dDate >= startDate &&
+        dDate <= endDate
+      ) {
+        if (jumlah > batas) {
+          console.log("jumlahKanban melebihi batas");
+          return { matchFound: false };
+        }
+        return {
+          matchFound: true,
+          partName: item?.part_name || item?.material,
+          matchedSelectedData: normalizeText(item.selectedData, pemisah),
+          supplierMatch,
+          rawData: item,
+        };
+      }
+    }
+
+    return { matchFound: false };
+  }
 
   const handleCopy = (index) => {
     if (qrCodes.length === 0) return;
@@ -145,6 +230,7 @@ export default function SmartInputLoop() {
         const savedInputs = res.data.data;
 
         if (savedInputs && savedInputs.length > 0) {
+          console.log(new Date(), "waktu ambil");
           const roundedLength = Math.ceil(savedInputs.length / 10) * 10;
           const newRows = Array.from({ length: roundedLength }, () => ({
             kanban: "",
@@ -153,11 +239,13 @@ export default function SmartInputLoop() {
           const newValidList = [];
 
           if (kanban) {
+            // console.log(savedInputs, "simpan rows");
             savedInputs.forEach((input) => {
               if (input.index !== undefined && input.index < newRows.length) {
                 newRows[input.index] = {
                   kanban: input.kanban || "",
                   labelSupplier: kanban ? input.labelSupplier : "",
+                  validPart: input.validPart,
                 };
                 newValidList[input.index] = input.status || false;
               }
@@ -200,105 +288,206 @@ export default function SmartInputLoop() {
     // setShift(null);
     // setWaktuAktual(null);
     setSelectedDate(Date);
+    try {
+      const formattedDate = moment(Date).format("YYYY-MM-DD");
 
-    if (!kanban) {
-      const itemQTY = fullData.flatMap((kolom) =>
-        kolom.data
-          .map((item, index) => ({ item, index }))
-          .filter(({ item }) => moment(item.delivery_date).isSame(Date, "day"))
-          .map(({ item, index }) => ({ ...item, index }))
+      const res = await axios.get(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/data/byDate?customer=${id}&date=${formattedDate}`
       );
 
-      if (itemQTY.length > 0) {
-        setData(itemQTY);
-        setDataLoaded(true);
-        // console.log(itemQTY, "ITEM", fullData);
-        // fullData.flatMap((kolom) =>
-        //   kolom.data.map((item) => console.log(item))
-        // );
-        const indicesToSelect = itemQTY.map((item) => item.index);
+      console.log(res, "response", separator);
+      const result = res.data.data || [];
 
-        // console.log(indicesToSelect);
-
+      if (result.length > 0) {
+        setData(result);
         setSelectedData(
-          fullData.flatMap(
-            (kolom) =>
-              kolom.selectedData.filter((_, index) =>
-                indicesToSelect.includes(index)
-              ) || []
+          result.map(
+            (item) => normalizeText(item.selectedData || ""),
+            separator
           )
         );
-        // console.log(
-        //   Data.filter((_, index) => indicesToSelect.includes(index)) || []
-        // );
-        await fetchSavedInputs(Date);
-      } else {
-        console.log("No matching data for selected date");
-        setData([]);
-        setDataLoaded(false);
-        setRows(
-          Array.from({ length: 20 }, () => ({ kanban: "", labelSupplier: "" }))
-        );
-        setValidList([]);
-      }
-    } else {
-      const matchedItem = fullData.flatMap((kolom) =>
-        kolom.data
-          .map((item, index) => ({ item, index }))
-          .filter(({ item }) => moment(item.delivery_date).isSame(Date, "day"))
-          .map(({ item, index }) => ({ ...item, index }))
-      );
-      if (matchedItem.length > 0) {
-        setData(matchedItem);
-        // setSelectedData(matchedItem.selectedData);
-        const indicesToSelect = matchedItem.map((item) => item.index);
-
         setDataLoaded(true);
-        setSelectedData(
-          fullData.flatMap(
-            (kolom) =>
-              kolom.selectedData.filter((_, index) =>
-                indicesToSelect.includes(index)
-              ) || []
-          )
-        );
+
         await fetchSavedInputs(Date);
       } else {
-        console.log("No matching data for selected date");
         setData([]);
         setSelectedData([]);
         setDataLoaded(false);
         setRows(
-          Array.from({ length: 20 }, () => ({ kanban: "", labelSupplier: "" }))
+          Array.from({ length: 20 }, () => ({
+            kanban: "",
+            labelSupplier: "",
+          }))
         );
         setValidList([]);
       }
+    } catch (err) {
+      console.error("Error fetching data by date:", err);
+      setData([]);
+      setSelectedData([]);
+      setDataLoaded(false);
+      setRows(
+        Array.from({ length: 20 }, () => ({ kanban: "", labelSupplier: "" }))
+      );
+      setValidList([]);
     }
+
+    // if (!kanban) {
+    //   const itemQTY = fullData.flatMap((kolom) =>
+    //     kolom.data
+    //       .map((item, index) => ({ item, index }))
+    //       .filter(({ item }) => moment(item.delivery_date).isSame(Date, "day"))
+    //       .map(({ item, index }) => ({ ...item, index }))
+    //   );
+
+    //   if (itemQTY.length > 0) {
+    //     setData(itemQTY);
+    //     setDataLoaded(true);
+    //     // console.log(itemQTY, "ITEM", fullData);
+    //     // fullData.flatMap((kolom) =>
+    //     //   kolom.data.map((item) => console.log(item))
+    //     // );
+    //     const indicesToSelect = itemQTY.map((item) => item.index);
+
+    //     // console.log(indicesToSelect);
+
+    //     setSelectedData(
+    //       fullData.flatMap(
+    //         (kolom) =>
+    //           kolom.selectedData.filter((_, index) =>
+    //             indicesToSelect.includes(index)
+    //           ) || []
+    //       )
+    //     );
+    //     // console.log(
+    //     //   Data.filter((_, index) => indicesToSelect.includes(index)) || []
+    //     // );
+    //     await fetchSavedInputs(Date);
+    //   } else {
+    //     // console.log("No matching data for selected date");
+    //     setData([]);
+    //     setDataLoaded(false);
+    //     setRows(
+    //       Array.from({ length: 20 }, () => ({ kanban: "", labelSupplier: "" }))
+    //     );
+    //     setValidList([]);
+    //   }
+    // } else {
+    //   const matchedItem = fullData.flatMap((kolom) =>
+    //     kolom.data
+    //       .map((item, index) => ({ item, index }))
+    //       .filter(({ item }) => moment(item.delivery_date).isSame(Date, "day"))
+    //       .map(({ item, index }) => ({ ...item, index }))
+    //   );
+    //   // console.log(matchedItem, "klik disini");
+    //   if (matchedItem.length > 0) {
+    //     setData(matchedItem);
+    //     // setSelectedData(matchedItem.selectedData);
+    //     const indicesToSelect = matchedItem.map((item) => item.index);
+
+    //     setDataLoaded(true);
+    //     setSelectedData(
+    //       fullData.flatMap(
+    //         (kolom) =>
+    //           kolom.selectedData.filter((_, index) =>
+    //             indicesToSelect.includes(index)
+    //           ) || []
+    //       )
+    //     );
+    //     // console.log(
+    //     //   "filter",
+    //     //   fullData.flatMap(
+    //     //     (kolom) =>
+    //     //       kolom.selectedData.filter((_, index) =>
+    //     //         indicesToSelect.includes(index)
+    //     //       ) || []
+    //     //   ),
+    //     //   kanban
+    //     // );
+    //     await fetchSavedInputs(Date);
+    //   } else {
+    //     // console.log("No matching data for selected date", "ada disini");
+    //     setData([]);
+    //     setSelectedData([]);
+    //     setDataLoaded(false);
+    //     setRows(
+    //       Array.from({ length: 20 }, () => ({ kanban: "", labelSupplier: "" }))
+    //     );
+    //     setValidList([]);
+    //   }
+    // }
   };
 
   const updateDnStatus = useCallback(
-    async (dn, total, sudahInput, sudahInputAll, totalMaplength) => {
+    async (
+      dn,
+      total,
+      sudahInput,
+      // totalDN,
+      sudahInputAll,
+      totalMaplength,
+      totalDNCycle,
+      // totalJobInDN === dnClosedStatus[dn + "_" + cycle],
+      sudahClosedDNCycle,
+      forceFinish = false,
+      qtyNow,
+      qtyAll
+    ) => {
+      if (sudahInputAll == null || totalMaplength == null) return;
+      // console.log(
+      //   dn,
+      //   total,
+      //   sudahInput,
+      //   totalDN,
+      //   sudahInputAll,
+      //   totalMaplength,
+      //   "NAH INI DN"
+      // );
       if (total - sudahInput < 0) return;
+      // console.log(
+      //   "total dn",
+      //   totalDN,
+      //   "TOTAL SEMUA",
+      //   sudahInputAll,
+      //   totalMaplength
+      // );
 
+      // console.log(
+      //   "contoh map",
+      //   dn,
+      //   total,
+      //   sudahInput,
+      //   totalDN,
+      //   sudahInputAll,
+      //   totalMaplength,
+      //   forceFinish,
+      //   qtyNow,
+      //   "payload"
+      // );
+
+      console.log(qtyNow, "jumlah qty");
       const percent =
-        sudahInput === 0
+        sudahInputAll === 0
           ? 0
-          : sudahInput > total
+          : sudahInputAll > qtyAll
           ? 100
-          : Math.round((sudahInput / total) * 100);
+          : Math.round((sudahInputAll / qtyAll) * 100);
 
+      let currentShift = shift;
       try {
         const basePayload = {
           customerId: id,
           tanggal: moment(selectedDate).format("YYYY-MM-DD"),
           dnNumber: dn,
           persentase: percent,
+          qty: qtyNow,
         };
 
         let res;
 
-        let currentShift = shift;
-        if (sudahInput === 1 && total - sudahInput === 0) {
+        if (sudahInput === 1 && totalMaplength - sudahInputAll === 0) {
           const proses = await checkProsesSekarang();
           currentShift = proses?.kode_shift;
 
@@ -318,14 +507,37 @@ export default function SmartInputLoop() {
               ...basePayload,
               status: "done",
               shift: sudahInputAll === totalMaplength ? currentShift : null,
-              sudahAll: false,
+              sudahAll: sudahInputAll === totalMaplength,
             }
           );
+
+          let statusInput;
+          if (totalMaplength - sudahInputAll === 0) {
+            statusInput = "done";
+          } else if (sudahInputAll === 1) {
+            statusInput = "first";
+          } else {
+            statusInput = "-";
+          }
+
+          if (
+            res?.data?.verificationCode &&
+            (sudahInputAll === totalMaplength || statusInput === "done")
+          ) {
+            setqrCodes((prev) => {
+              const newCode =
+                res.data.verificationCode || res.data.data.verificationCode;
+              return prev.includes(newCode) || newCode == null
+                ? prev
+                : [...prev, newCode];
+            });
+          }
         } else {
+          // console.log(totalMaplength, sudahInputAll, "bener ga");
           const status =
             sudahInput === 1
               ? "first"
-              : total - sudahInput === 0
+              : totalMaplength - sudahInputAll === 0
               ? "done"
               : "-";
 
@@ -340,23 +552,25 @@ export default function SmartInputLoop() {
               ...basePayload,
               status,
               shift: sudahInputAll === totalMaplength ? currentShift : null,
-              sudahAll: sudahInputAll === totalMaplength ? true : false,
+              sudahAll: sudahInputAll === totalMaplength,
             }
           );
         }
 
         let statusInput;
-        if (sudahInput === 1) {
-          statusInput = "first";
-        } else if (total - sudahInput === 0) {
+
+        if (totalMaplength - sudahInputAll === 0) {
           statusInput = "done";
+        } else if (sudahInput === 1) {
+          statusInput = "first";
         } else {
           statusInput = "-";
         }
 
         if (
           res?.data?.verificationCode &&
-          (sudahInput === total || statusInput === "done")
+          sudahInputAll === totalMaplength &&
+          statusInput === "done"
         ) {
           setqrCodes((prev) => {
             const newCode =
@@ -366,27 +580,53 @@ export default function SmartInputLoop() {
               : [...prev, newCode];
           });
         }
+        const found = Data.find((d) => d.dn_number === dn);
+        const cycle = found?.delivery_cycle || found?.cycle;
+        if (!shift && res.data.shift !== shift && forceFinish) {
+          // if (res.data.shift) {
+          //   setShiftMap((prev) => ({
+          //     ...prev,
+          //     [cycle]: shift,
+          //   }));
+          // }
 
-        if (res.data.shift !== shift) {
-          setShift(res.data.shift);
+          // if (res.data.waktuAktual) {
+          //   setWaktuAktualMap((prev) => ({
+          //     ...prev,
+          //     [cycle]: moment(res.data.waktuAktual).format("DD-MM-YYYY HH:mm"),
+          //   }));
+          // }
+
+          if (res.data.shift && forceFinish) {
+            setShiftWaktuMap((prev) => ({
+              ...prev,
+              [cycle]: {
+                waktuAktual: res.data.waktuAktual
+                  ? moment(res.data.waktuAktual).format("DD-MM-YYYY HH:mm")
+                  : " ",
+                shift:
+                  totalDNCycle === sudahClosedDNCycle ? res.data.shift : " ",
+              },
+            }));
+          }
         }
 
-        setWaktuAktual(res.data.waktuAktual);
-
-        await axios.put(
-          `${import.meta.env.VITE_BACKEND_URL}/api/track/finish`,
-          {
-            customerId: id,
-            tanggal: moment(selectedDate).format("YYYY-MM-DD"),
-            code: res.data.verificationCode || null,
-            dnNumber: dn,
-          }
-        );
+        if (forceFinish && res.data.verificationCode) {
+          await axios.put(
+            `${import.meta.env.VITE_BACKEND_URL}/api/track/finish`,
+            {
+              customerId: id,
+              tanggal: moment(selectedDate).format("YYYY-MM-DD"),
+              codeOD: res.data.verificationCode || null,
+              dnNumber: dn,
+            }
+          );
+        }
       } catch (error) {
         console.error("Error updating DN status:", error);
       }
     },
-    [id, selectedDate, shift, checkProsesSekarang]
+    [id, selectedDate, shift, checkProsesSekarang, Data]
   );
 
   const updateODStatus = useCallback(
@@ -395,12 +635,13 @@ export default function SmartInputLoop() {
       sudahInputOD,
       totalKanban,
       totalMaplength,
-      sudahInputAll
+      sudahInputAll,
+      finishAll = false,
+      qtyNow = 0
     ) => {
       if (sudahInputAll == null || totalMaplength == null) return; // true jika null atau undefined
 
-      // if (totalKanban - sudahInputOD < 0) return;
-      if (totalKanban - sudahInputOD < 0) return;
+      if (totalKanban < sudahInputOD) return;
       const percent =
         sudahInputOD === 0
           ? 0
@@ -408,19 +649,33 @@ export default function SmartInputLoop() {
           ? 100
           : Math.round((sudahInputOD / totalKanban) * 100);
 
+      console.log(
+        "contoh map",
+        order_no,
+        sudahInputOD,
+        totalKanban,
+        totalMaplength,
+        sudahInputAll,
+        finishAll,
+        qtyNow
+      );
+
+      const dnNumber = order_no.split(",")[0];
+
       try {
         const basePayload = {
           customerId: id,
           tanggal: moment(selectedDate).format("YYYY-MM-DD"),
-          dnNumber: order_no.split(",")[0],
+          dnNumber,
           persentase: percent,
+          qty: qtyNow,
         };
 
         let res;
 
         // Jika dua kondisi terpenuhi
         let currentShift = shift;
-        if (sudahInputOD === 1 && totalKanban - sudahInputOD === 0) {
+        if (sudahInputOD === 1) {
           currentShift = shift;
           const proses = await checkProsesSekarang();
           currentShift = proses?.kode_shift;
@@ -434,36 +689,44 @@ export default function SmartInputLoop() {
             }
           );
 
-          res = await axios.put(
-            `${import.meta.env.VITE_BACKEND_URL}/api/track`,
-            {
-              ...basePayload,
-              status: "done",
-              shift: sudahInputAll === totalMaplength ? currentShift : null,
-              sudahAll: false,
-            }
-          );
-
+          if (totalKanban - sudahInputOD === 0) {
+            res = await axios.put(
+              `${import.meta.env.VITE_BACKEND_URL}/api/track`,
+              {
+                ...basePayload,
+                status: "done",
+                shift: sudahInputAll === totalMaplength ? currentShift : null,
+                sudahAll: sudahInputAll === totalMaplength,
+              }
+            );
+            console.log("Res pertama", res);
+          }
           let statusInput;
-          if (sudahInputOD === 1) {
-            statusInput = "first";
-          } else if (totalKanban - sudahInputOD === 0) {
+
+          if (totalKanban - sudahInputOD === 0) {
             statusInput = "done";
+          } else if (sudahInputOD === 1) {
+            statusInput = "first";
           } else {
             statusInput = "-";
           }
 
+          console.log(statusInput, "pertama astatus");
           if (
             res?.data?.verificationCode &&
-            (sudahInputOD === totalKanban || statusInput === "done")
+            sudahInputOD === totalKanban &&
+            statusInput === "done"
           ) {
-            setqrCodes((prev) => {
-              const newCode =
-                res.data.verificationCode || res.data.data.verificationCode;
-              return prev.includes(newCode) || newCode == null
-                ? prev
-                : [...prev, newCode];
-            });
+            console.log(res.data.verificationCode, "KENAPA GA ADA");
+            const newCode =
+              res.data.verificationCode || res.data.data?.verificationCode;
+            setqrCodes((prev) =>
+              prev.includes(newCode) || !newCode ? prev : [...prev, newCode]
+            );
+          }
+
+          if (!shift && res.data.shift && sudahInputAll === totalMaplength) {
+            setShift(res.data.shift);
           }
 
           // setqrCodes((prev) => [
@@ -471,13 +734,9 @@ export default function SmartInputLoop() {
           //   res.data.verificationCode || res.data.data.verificationCode,
           // ]);
         } else {
-          const status =
-            sudahInputOD === 1
-              ? "first"
-              : totalKanban - sudahInputOD === 0
-              ? "done"
-              : "-";
+          const status = totalKanban - sudahInputOD === 0 ? "done" : "-";
 
+          console.log("kesini", sudahInputAll, totalMaplength, status);
           let currentShift = shift;
           if (!currentShift || currentShift === "-") {
             const proses = await checkProsesSekarang();
@@ -489,20 +748,20 @@ export default function SmartInputLoop() {
               ...basePayload,
               status,
               shift: sudahInputAll === totalMaplength ? currentShift : null,
-              sudahAll: sudahInputAll === totalMaplength ? true : false,
+              sudahAll: sudahInputAll === totalMaplength,
             }
           );
+          console.log(res, "status", status, sudahInputAll === totalMaplength);
         }
 
         let statusInput;
-        if (sudahInputOD === 1) {
-          statusInput = "first";
-        } else if (totalKanban - sudahInputOD === 0) {
+        if (totalKanban - sudahInputOD === 0) {
           statusInput = "done";
+        } else if (sudahInputOD === 1) {
+          statusInput = "first";
         } else {
           statusInput = "-";
         }
-
         if (
           res?.data?.verificationCode &&
           sudahInputOD === totalKanban &&
@@ -521,27 +780,35 @@ export default function SmartInputLoop() {
         //   ...prev,
         //   res.data.verificationCode || res.data.data.verificationCode,
         // ]);
-        if (
-          !shift &&
-          res.data.shift !== shift &&
-          sudahInputAll === totalMaplength
-        ) {
-          setShift(res.data.shift); // hanya update kalau beda
+        if (!shift && res.data.shift !== shift && finishAll) {
+          //   setShift(res.data.shift); // hanya update kalau beda
+          // }
+
+          // setWaktuAktual(res.data.waktuAktual);
+
+          setShiftWaktuMap((prev) => ({
+            ...prev,
+            [cycleFilter || 1]: {
+              waktuAktual: res.data.waktuAktual
+                ? moment(res.data.waktuAktual).format("DD-MM-YYYY HH:mm")
+                : " ",
+              shift: res.data.shift || " ",
+            },
+          }));
         }
 
-        setWaktuAktual(res.data.waktuAktual);
-
-        // if (sudahInputAll && totalMaplength) {
-        await axios.put(
-          `${import.meta.env.VITE_BACKEND_URL}/api/track/finish`,
-          {
-            customerId: id,
-            tanggal: moment(selectedDate).format("YYYY-MM-DD"),
-            code: res.data.verificationCode || null,
-            dnNumber: order_no.split(",")[0],
-          }
-        );
-        // }
+        console.log(res.data.verificationCode, "Ada ga");
+        if (finishAll && res.data.verificationCode) {
+          await axios.put(
+            `${import.meta.env.VITE_BACKEND_URL}/api/track/finish`,
+            {
+              customerId: id,
+              tanggal: moment(selectedDate).format("YYYY-MM-DD"),
+              codeOD: res.data.verificationCode || null,
+              dnNumber: order_no.split(",")[0],
+            }
+          );
+        }
       } catch (error) {
         console.error("Error updating DN status:", error);
       }
@@ -556,21 +823,60 @@ export default function SmartInputLoop() {
   };
 
   const generateSummaryTable = useCallback(async () => {
-    if (!dataLoaded) return;
+    if (!dataLoaded && (!uniqueColumn || uniqueColumn.length < 1)) return;
     const totalMap = {};
     const jumlahQTY = {};
-    Data.forEach((item) => {
-      const dn = item?.dn_number;
+    const totalMapDN = {};
+    const jumlahQTYDN = {};
+    const jobCountPerDN = {};
+    const jobMap = new Map();
+    const qtyPerJob = {};
+    const qtyPerDNBerjalan = {};
 
-      totalMap[dn] =
-        (totalMap[dn] || 0) +
-        Math.round(Number(item[`order_(pcs)`] / item.qty));
-      jumlahQTY[dn] = (jumlahQTY[dn] || 0) + Number(item[`order_(pcs)`]);
-    });
-    setValidKanban(sisaMap);
-    setJumlahOrder(jumlahQTY);
+    // const otherColumns = uniqueColumn
+    //   .slice(1)
+    //   .map((col) => col.replace(/[\s_-]/g, "_").toLowerCase());
+
+    // console.log(otherColumns, "kupulan");
+    const dnToCycleMap = new Map();
+    // console.log(Data, "ada table data", uniqueColumn);
+    Data.filter((item) => item.delivery_cycle === cycleFilter || 2).forEach(
+      (item) => {
+        const dn = item.dn_number;
+        const key = `${dn}_${item?.selectedData}_${item.delivery_cycle || 1}`;
+
+        const orderQty = Number(item["order_(pcs)"]) || 0;
+        const qty = Number(item.qty) || 1;
+        const totalQty = Math.round(orderQty / qty);
+
+        if (!dnToCycleMap.has(key)) {
+          dnToCycleMap.set(key, item.delivery_cycle || item.cycle || 0);
+        }
+
+        totalMap[key] = (totalMap[key] || 0) + totalQty;
+        jumlahQTY[key] = (jumlahQTY[key] || 0) + orderQty;
+
+        if (!jobCountPerDN[dn + "_" + (item?.delivery_cycle || "1")])
+          jobCountPerDN[dn + "_" + (item?.delivery_cycle || "1")] = new Set();
+        jobCountPerDN[dn + "_" + (item?.delivery_cycle || "1")].add(
+          item?.selectedData
+        );
+        jobMap.set(key, item);
+
+        totalMapDN[dn + "_" + (item?.delivery_cycle || "1")] =
+          (totalMapDN[dn + "_" + (item?.delivery_cycle || "1")] || 0) +
+          Math.round(orderQty / qty);
+        jumlahQTYDN[dn + "_" + (item?.delivery_cycle || "1")] =
+          (jumlahQTYDN[dn + "_" + (item?.delivery_cycle || "1")] || 0) +
+          orderQty;
+        qtyPerJob[key] = totalQty * qty;
+        qtyPerDNBerjalan[dn + "_" + (item?.delivery_cycle || "1")] =
+          (qtyPerDNBerjalan[dn + "_" + (item?.delivery_cycle || "1")] || 0) +
+          qtyPerJob[key];
+      }
+    );
+    // setJumlahOrder(jumlahQTY);
     setSudahSelesai(totalMap);
-
     const sisaMap = {};
     rows.forEach((row, index) => {
       if (!validList[index]) return;
@@ -582,115 +888,389 @@ export default function SmartInputLoop() {
       //     item.split(/\s+/).some((word) => console.log(word))
       //   );
       // });
+      const kanban = row.kanban?.toLowerCase();
+      const labelSupplier = row.labelSupplier?.toLowerCase();
+      const labelTrimmed = labelSupplier?.split("|")[0];
+
+      if (kanban === labelSupplier) return;
 
       const foundIndex = Data.findIndex((item) => {
-        const jobNoPart = lastCharAfterSpace(item?.job_no).toLowerCase();
-        const partNoPart = item?.part_no.toLowerCase();
+        // const rawValues = uniqueColumn
+        //   .slice(1)
+        //   .map((col) => col.replace(/[\s_-]/g, "_").toLowerCase())
+        //   .filter(Boolean);
 
-        if (!jobNoPart || !partNoPart) return false;
+        // const jobParts = rawValues.map((val) => lastCharAfterSpace(val));
 
-        const kanban = row.kanban?.toLowerCase();
-        const labelSupplier = row.labelSupplier?.toLowerCase();
-        const labelTrimmed = labelSupplier?.slice(0, -4)?.split("|")[0];
+        const partNo = item?.part_no?.toLowerCase();
+        // const odCustomer = item?.order_delivery;
+        // const cycle = item?.delivery_cycle;
 
-        const matchKanban = kanban?.includes(jobNoPart);
-        const matchLabel1 = labelTrimmed === partNoPart;
+        const material = item?.material?.toLowerCase();
+        // const isMatchKanban = kanban?.includes(jobPart);
+        const jobPart = lastCharAfterSpace(item?.job_no?.toLowerCase());
 
-        return matchKanban && matchLabel1;
+        // const isMatchKanban = jobParts.every((jp) =>
+        //   kanban?.includes(item?.[jp]?.toLowerCase())
+        // );
+        // jobParts.map((jp) => console.log(item?.[jp], jp, "item"));
+        // const validJobParts = jobParts.filter((jp) => item?.[jp]); // buang yang undefined/null
+
+        // console.log(validJobParts, "valid");
+        const isMatchKanban =
+          // validJobParts.length > 0 &&
+          // validJobParts.every((jp) =>
+          kanban?.includes(
+            normalizeText(item.selectedData.toLowerCase(), separator)
+          );
+
+        // );
+
+        // console.log(
+        //   kanban?.includes(item?.order_no?.toLowerCase()),
+        //   kanban?.includes(item?.job_no?.toLowerCase()),
+        //   "kanban"
+        // );
+
+        const isMatchLabel =
+          new RegExp(`\\b${jobPart}\\b`, "i").test(labelTrimmed) ||
+          (partNo && new RegExp(`\\b${partNo}\\b`, "i").test(labelTrimmed)) ||
+          (material &&
+            new RegExp(`\\b${material}\\b`, "i").test(labelTrimmed)) ||
+          item?.selectedData
+            ?.toLowerCase()
+            .includes(labelTrimmed.toLowerCase()) ||
+          new RegExp(`${item?.selectedData}`, "i").test(labelTrimmed);
+
+        return isMatchKanban && isMatchLabel;
       });
 
-      // console.log(foundIndex, selectedData, row.kanban, "contoh");
+      console.log(foundIndex, "cari indeks", sisaMap);
+      if (foundIndex !== -1 && selectedData[foundIndex]) {
+        const dn = Data[foundIndex]?.dn_number;
+        // const otherColumns = uniqueColumn
+        //   .slice(1)
+        //   .map((col) => col.replace(/[\s_-]/g, "_").toLowerCase())
+        //   .filter(Boolean);
 
-      if (Data[foundIndex])
-        if (foundIndex !== -1) {
-          const unique = selectedData[foundIndex];
-          if (unique) {
-            sisaMap[Data[foundIndex].dn_number] =
-              (sisaMap[Data[foundIndex].dn_number] || 0) + 1;
-            // console.log(String(Data[foundIndex].dn_number), "dn");
-          }
-        }
+        // const job = otherColumns
+        //   .map((col) => Data[foundIndex]?.[col])
+        //   .filter(Boolean)
+        //   .join("_");
+
+        // const job = Data[foundIndex][uniqueColumn];
+
+        const key =
+          dn +
+          "_" +
+          selectedData[foundIndex].toUpperCase() +
+          "_" +
+          Data[foundIndex].delivery_cycle;
+
+        sisaMap[key] = (sisaMap[key] || 0) + 1;
+      }
     });
+    setValidKanban(sisaMap);
+    setSudahSelesai(totalMap);
 
-    const dnNumbers = Object.keys(totalMap);
-    let allClosed = true;
+    // const foundIndex = Data.findIndex((item) => {
+    //   const jobNoPart = lastCharAfterSpace(
+    //     item?.[uniqueColumn].toLowerCase()
+    //   );
+    //   const partNoPart = item?.part_no?.toLowerCase();
+    //   const material = item?.material?.toLowerCase();
+    //   console.log(jobNoPart, "job no");
 
-    const table = dnNumbers.map((dn) => {
-      const total = totalMap[dn];
-      const sisaInput = sisaMap[dn] || 0;
-      const sisa = total - sisaInput;
+    //   if (!jobNoPart || (!partNoPart && !material)) return false;
 
-      // console.log(sisaInput, sisa, "sisa input", dn, "aoa");
+    //   const kanban = row.kanban?.toLowerCase();
+    //   const labelSupplier = row.labelSupplier?.toLowerCase();
+    //   const labelTrimmed = labelSupplier?.split("|")[0];
 
-      const sudahInputDN = Object.keys(sisaMap).filter(
-        (v) => v[dn] === totalMap[dn].length
-      );
+    //   const matchKanban = kanban?.includes(jobNoPart);
+    //   const matchLabel1 =
+    //     labelTrimmed === partNoPart || labelTrimmed.includes(material);
 
-      let status = "Closed";
-      if (sisa > 0) {
-        status = "Open";
-        allClosed = false;
-        updateDnStatus(
-          dn,
-          total,
-          sisaInput,
-          Object.keys(totalMap).length,
-          sudahInputDN.length
-        );
-      } else if (sisa < 0) status = "Abnormal";
+    //   return (
+    //     matchKanban && (matchLabel1 || labelTrimmed.includes(jobNoPart[0]))
+    //   );
+    // });
 
-      if (sisa === 0 && status === "Closed") {
-        updateDnStatus(
-          dn,
-          total,
-          sisaInput,
-          Object.keys(totalMap).length,
-          sudahInputDN.length
-        );
-      }
+    //   if (Data[foundIndex])
+    //     if (foundIndex !== -1) {
+    //       const unique = selectedData[foundIndex];
+    //       if (unique) {
+    //         sisaMap[
+    //           Data[foundIndex].dn_number +
+    //             "_" +
+    //             Data[foundIndex]?.[uniqueColumn]
+    //         ] =
+    //           (sisaMap[
+    //             Data[foundIndex].dn_number +
+    //               "_" +
+    //               Data[foundIndex]?.[uniqueColumn]
+    //           ] || 0) + 1;
+    //         // console.log(String(Data[foundIndex].dn_number), "dn");
+    //       }
+    //     }
+    // });
 
-      if (sisa < 0) {
-        return {
-          dn_number: dn,
-          jumlah_order: jumlahQTY[dn],
-          total,
-          sisa: 0,
-          status,
-        };
-      }
+    // const dnNumbers = Object.keys(totalMap);
+    // let allClosed = true;
 
-      // console.log(dnNumbersKanban, "kenap", totalMap, sisaMap);
-      return {
-        dn_number: dn,
-        jumlah_order: jumlahQTY[dn],
+    const summaryTable = [];
+    // const dnStatusMap = new Map(); // Untuk pengecekan semua job per DN
+    const dnClosedStatus = {};
+    // let totalDN = Object.keys(jobCountPerDN).length;
+
+    for (const key of Object.keys(totalMap)) {
+      const [dn, dnUnique, cycle] = key.split("_");
+      const total = totalMap[key];
+      const sisaInput = sisaMap[key] || 0;
+      // console.log(
+      //   "jumlah ada",
+      //   jobMap.get(key)?.qty,
+      //   sisaMap[key],
+      //   key,
+      //   sisaMap
+      // );
+      console.log(jobMap.get(key)?.qty, "ada aktual", sisaInput);
+      const currentProgressQty = sisaInput * jobMap.get(key)?.qty; // Ini qty aktual
+
+      const sisa = Math.max(total - sisaInput, 0);
+      // const totalDN = totalMapDN[dnUnique + "_" + cycle];
+      const jumlah = jumlahQTY[key];
+
+      const status = sisa === 0 ? "Closed" : "Open";
+
+      summaryTable.push({
+        dn_number: dnUnique,
+        cycle: dnToCycleMap.get(key) || 1,
+        jumlah_order: jumlah,
         total,
         sisa,
         status,
-      };
-    });
+      });
 
-    setSummaryTable(table);
-    setAllDnClosed(allClosed);
-  }, [rows, validList, selectedData, Data, dataLoaded, updateDnStatus]);
+      if (status === "Closed") {
+        dnClosedStatus[dn + "_" + cycle] =
+          (dnClosedStatus[dn + "_" + cycle] || 0) + 1;
+      }
+
+      // if (!dnStatusMap.has(dn + "_" + cycle))
+      //   dnStatusMap.set(dn + "_" + cycle, []);
+      // dnStatusMap.get(dn + "_" + cycle).push(status);
+
+      const totalJobInDN = jobCountPerDN[dn + "_" + cycle]?.size || 0;
+      // const jobClosedInThisDN = dnClosedStatus[dn + "_" + cycle] || 0;
+      // const isAllJobInThisDNClosed = jobClosedInThisDN === totalJobInDN;
+
+      // Jika semua DN di cycle selesai
+      const willBeClosedDNCount = Object.values(dnClosedStatus).filter(
+        (count, idx) => {
+          const dnKey = Object.keys(dnClosedStatus)[idx];
+          // console.log(
+          //   dnKey,
+          //   "dn liat status",
+          //   jobCountPerDN,
+          //   jobCountPerDN[dnKey],
+          //   count
+          // );
+          return count === jobCountPerDN[dnKey]?.size;
+        }
+      ).length;
+
+      const allDNsInCurrentCycle = Object.keys(jobCountPerDN).filter(
+        (k) => k.split("_")[1] === cycle
+      );
+
+      const closedDNsInCurrentCycle = allDNsInCurrentCycle.filter((dnKey) => {
+        return dnClosedStatus[dnKey] === jobCountPerDN[dnKey]?.size;
+      });
+
+      const jumlahDNDalamCycleIni = allDNsInCurrentCycle.length;
+      const jumlahDNClosedDalamCycleIni = closedDNsInCurrentCycle.length;
+
+      const isAllDNClosed = willBeClosedDNCount === totalJobInDN;
+      const qtyAll = jumlahQTYDN[dn + "_" + cycle];
+
+      await updateDnStatus(
+        dn,
+        total,
+        sisaInput,
+        totalJobInDN,
+        dnClosedStatus[dn + "_" + cycle],
+        jumlahDNDalamCycleIni,
+        jumlahDNClosedDalamCycleIni,
+        jumlahDNDalamCycleIni === jumlahDNClosedDalamCycleIni,
+        currentProgressQty,
+        qtyAll
+        // Object.values(sisaMap).reduce((a, b) => a + b, 0),
+        // Object.keys(totalMap).length
+      );
+    }
+
+    // for (const [dnCycle, statuses] of dnStatusMap.entries()) {
+    //   const allClosed = statuses.every((s) => s === "Closed");
+    //   if (allClosed) {
+    //     const total = totalMapDN[dnCycle];
+    //     const sudahInput = Object.keys(sisaMap)
+    //       .filter((k) => k.startsWith(dnCycle.split("_")[0] + "_"))
+    //       .reduce((a, k) => a + sisaMap[k], 0);
+    //     await updateDnStatus(
+    //       dnCycle.split("_")[0],
+    //       total,
+    //       sudahInput,
+    //       total,
+    //       Object.keys(sisaMap).length,
+    //       Object.keys(totalMap).length,
+    //       true
+    //     );
+    // }
+    // }
+
+    // console.log(cycleFilter, "filter cycle");
+    const filteredTable = cycleFilter
+      ? summaryTable.filter((row) => row.cycle === cycleFilter)
+      : summaryTable;
+
+    setSummaryTable(filteredTable);
+  }, [
+    rows,
+    validList,
+    selectedData,
+    Data,
+    dataLoaded,
+    cycleFilter,
+    updateDnStatus,
+    uniqueColumn,
+    separator,
+  ]);
+
+  //   setValidKanban(sisaMap);
+  //   const table = dnNumbers.map((dnUnique) => {
+  //     const total = totalMap[dnUnique];
+  //     const sisaInput = sisaMap[dnUnique] || 0;
+  //     const sisa = total - sisaInput;
+  //     const totalDN = totalMapDN[String(dnUnique.split("_")[0])];
+
+  //     // console.log(sisaInput, sisa, "sisa input", dnUnique, "aoa");
+
+  //     const sudahInputDN = Object.keys(sisaMap).filter(
+  //       (v) => v === totalMapDN[String(dnUnique.split("_")[0])].length
+  //     );
+
+  //     let status = "Closed";
+  //     if (sisa > 0) {
+  //       // console.log(sisa, "ini masih banyak");
+  //       status = "Open";
+  //       allClosed = false;
+  //       // console.log("keisni, total", total, sisaInput);
+  //       updateDnStatus(
+  //         dnUnique.split("_")[0],
+  //         total,
+  //         sisaInput,
+  //         totalDN,
+  //         Object.keys(totalMapDN).length,
+  //         sudahInputDN.length
+  //       );
+  //     }
+
+  //     if (sisa === 0 && status === "Closed") {
+  //       updateDnStatus(
+  //         dnUnique.split("_")[0],
+  //         total,
+  //         sisaInput,
+  //         totalDN,
+  //         Object.keys(totalMap).length,
+  //         sudahInputDN.length
+  //       );
+  //     }
+
+  //     const thisData = Data.find((item) => {
+  //       const matchDN = item?.dn_number === dnUnique.split("_")[0];
+  //       const matchJob = item?.[uniqueColumn] === dnUnique.split("_")[1];
+  //       return matchDN && matchJob;
+  //     });
+
+  //     if (sisa < 0) {
+  // return {
+  //   dn_number: dnUnique?.replace("_", ""),
+  //   cycle: thisData?.delivery_cycle || 1,
+  //   jumlah_order: jumlahQTY[dnUnique],
+  //   total,
+  //   sisa: 0,
+  //   status,
+  //       };
+  //     }
+
+  //     // console.log(dnNumbers, "kenap", totalMap, sisaMap);
+  //     // console.log(dnUnique.replace("_", ""), dnUnique, sisa, "masuk");
+  //     return {
+  //       dn_number: dnUnique?.replace("_", ""),
+  //       cycle: thisData?.delivery_cycle || 1,
+  //       jumlah_order: jumlahQTY[dnUnique],
+  //       total,
+  //       sisa,
+  //       status,
+  //     };
+  //   });
+
+  //   const filteredTable = cycleFilter
+  //     ? table.filter((row) => row.cycle === Number(cycleFilter))
+  //     : table;
+
+  //   // console.log(table, dnNumbers, "table dan dn");
+  //   setSummaryTable(filteredTable);
+
+  //   // setAllDnClosed(allClosed);
+  // }, [
+  //   rows,
+  //   validList,
+  //   selectedData,
+  //   Data,
+  //   dataLoaded,
+  //   cycleFilter,
+  //   updateDnStatus,
+  //   uniqueColumn,
+  // ]);
 
   const generateSummaryTableNoKanban = useCallback(async () => {
-    if (!dataLoaded) return;
+    if (!dataLoaded && !uniqueColumn) return;
+
+    console.log(uniqueColumn, uniqueColumn[0]);
     const totalMap = {};
     const jumlahQTY = {};
+    const jumlahQTYDN = {};
+    const jobCountPerDN = {};
+    const jobMap = new Map();
+    const qtyPerJob = {};
+    const qtyPerDNBerjalan = {};
+
     Data.forEach((item) => {
       const dn = item.dn_number;
-      const job = item.job_no;
-      totalMap[dn + "," + job] =
-        (totalMap[dn + "," + job] || 0) +
-        Number(item[`order_(pcs)`] / item.qty);
-      jumlahQTY[dn + "," + job] =
-        (jumlahQTY[dn + "," + job] || 0) + Number(item[`order_(pcs)`]);
-      // console.log(dn, totalMap[dn + "," + job], "dn");
-    });
-    // setValidKanban(totalMap);
-    setJumlahOrder(jumlahQTY);
-    setSudahSelesai(totalMap);
+      const cycle = item.delivery_cycle || "1";
+      const job = item?.[uniqueColumn[0]];
+      const key = `${dn},${job}`;
+      const orderQty = Number(item[`order_(pcs)`]);
+      const unitQty = Number(item.qty);
+      const totalQty = Math.round(orderQty / unitQty);
 
+      totalMap[key] = (totalMap[key] || 0) + totalQty;
+      jumlahQTY[key] = (jumlahQTY[key] || 0) + orderQty;
+      if (!jobCountPerDN[dn]) jobCountPerDN[dn] = new Set();
+      jobCountPerDN[dn].add(job);
+
+      jobMap.set(key, item);
+      jumlahQTYDN[dn + cycle] = (jumlahQTYDN[dn + cycle] || 0) + orderQty;
+      qtyPerJob[key] = totalQty * unitQty;
+      qtyPerDNBerjalan[dn] = (qtyPerDNBerjalan[dn] || 0) + qtyPerJob[key];
+    });
+
+    // Data.forEach((item) => {
+    //   const key = `${item.dn_number},${item[uniqueColumn]}`;
+    //   jobMap.set(key, item);
+    // });
     // console.log(jumlahQTY, totalMap, "qty");
 
     const sisaMap = {};
@@ -698,84 +1278,170 @@ export default function SmartInputLoop() {
       // console.log(validList[index], "masuk rows");
       if (!validList[index]) return;
 
-      const foundIndex = Data.findIndex((item) =>
-        // row.kanban?.toLowerCase().includes(item.dn_number.toLowerCase()) &&
-        row.kanban?.toLowerCase().includes(item?.job_no.toLowerCase())
-      );
-      if (foundIndex !== -1) {
-        // if (
-        //   sisaMap[
-        //     `${Data[foundIndex].dn_number},${Data[foundIndex].job_no}`
-        //   ] ===
-        //   totalMap[`${Data[foundIndex].dn_number},${Data[foundIndex].job_no}`]
-        // )
-        //   return;
+      const jobKey = Array.from(jobMap.keys()).find((key) => {
+        const job = key.split(",")[1];
+        return row.kanban?.toLowerCase().includes(job.toLowerCase());
+      });
 
-        sisaMap[`${Data[foundIndex].dn_number},${Data[foundIndex].job_no}`] =
-          (sisaMap[
-            `${Data[foundIndex].dn_number},${Data[foundIndex].job_no}`
-          ] || 0) + 1;
-
-        // console.log(String(Data[foundIndex].dn_number), "dn sisa", sisaMap);
+      if (jobKey) {
+        sisaMap[jobKey] = (sisaMap[jobKey] || 0) + 1;
       }
     });
+
     setValidKanban(sisaMap);
+    setSudahSelesai(totalMap);
 
-    const dnNumbersKanban = Object.keys(totalMap);
-    let allClosed = true;
+    const summaryTableNoKanban = [];
+    const dnClosedStatus = {};
+    let closedDNCount = 0;
+    let totalDN = Object.keys(jobCountPerDN).length;
+    // let totalDNCount = Object.keys(jobCountPerDN).length;
 
-    const table = dnNumbersKanban.map((unique) => {
-      const total = totalMap[unique];
-      // console.log(totalMap[unique], unique, "unik");
-      const sisaInput = sisaMap[unique] || 0;
+    for (const key of Object.keys(totalMap)) {
+      const [dn, job] = key.split(",");
+      const total = totalMap[key];
+      const input = sisaMap[key] || 0;
+      const currentProgressQty = input * (jobMap.get(key)?.qty || 0); // Ini qty aktual
 
-      const sisa = total - sisaInput;
+      const sisa = Math.max(total - input, 0);
+      const status = sisa === 0 ? "Closed" : "Open";
 
-      const sudahInputDN = Object.keys(sisaMap).filter(
-        (v) => v[unique] === totalMap[unique].length
-      );
-
-      let status = "Closed";
-      if (sisa > 0) {
-        status = "Open";
-        allClosed = false;
-        updateODStatus(
-          unique,
-          sisaInput,
-          total,
-          Object.keys(totalMap).length,
-          sudahInputDN.length
-        );
-      } else if (sisa === 0 && status === "Closed") {
-        updateODStatus(
-          unique,
-          sisaInput,
-          total,
-          Object.keys(totalMap).length,
-          sudahInputDN.length
-        );
-      } else if (sisa < 0) {
-        return {
-          dn_number: unique,
-          jumlah_order: jumlahQTY[unique],
-          total,
-          sisa: 0,
-          status,
-        };
-      }
-
-      return {
-        dn_number: unique,
-        jumlah_order: jumlahQTY[unique],
+      summaryTableNoKanban.push({
+        dn_number: key,
+        jumlah_order: jumlahQTY[key],
         total,
         sisa,
         status,
-      };
-    });
+      });
 
-    setSummaryTable(table);
-    setAllDnClosed(allClosed);
-  }, [rows, validList, Data, dataLoaded, updateODStatus]);
+      // if (!dnStatusMap[dn]) dnStatusMap[dn] = [];
+      // dnStatusMap[dn].push(status);
+      // console.log(dnStatusMap[dn], dnStatusMap, "status");
+
+      if (status === "Closed") {
+        dnClosedStatus[dn] = (dnClosedStatus[dn] || 0) + 1;
+      }
+
+      // Jika semua job dalam DN ini sudah closed
+      const totalJobInDN = jobCountPerDN[dn]?.size || 0;
+      const jobClosedInThisDN = dnClosedStatus[dn] || 0;
+      const isAllJobInThisDNClosed = jobClosedInThisDN === totalJobInDN;
+
+      // Jika semua DN selesai
+      const willBeClosedDNCount = Object.values(dnClosedStatus).filter(
+        (count, idx) => {
+          console.log(
+            count,
+            jobCountPerDN[Object.keys(dnClosedStatus)[idx]]?.size,
+            dnClosedStatus[0],
+            Object.keys(dnClosedStatus)[idx],
+            "ini dn seleesai"
+          );
+          const dnKey = Object.keys(dnClosedStatus)[idx];
+          return count === jobCountPerDN[dnKey]?.size;
+        }
+      ).length;
+
+      const isAllDNClosed = willBeClosedDNCount === totalDN;
+      console.log(isAllDNClosed, totalDN, willBeClosedDNCount, "ini kitiman");
+
+      await updateODStatus(
+        key, // tetap pakai key = `${dn},${job}`
+        input,
+        total,
+        totalDN,
+        willBeClosedDNCount,
+        isAllDNClosed,
+        currentProgressQty
+      );
+    }
+
+    setSummaryTable(summaryTableNoKanban);
+    // setAllDnClosed(allClosed);
+  }, [rows, validList, Data, dataLoaded, updateODStatus, uniqueColumn]);
+  // const dnNumbersKanban = Object.keys(totalMap);
+  // let allClosed = true;
+
+  // const table = dnNumbersKanban.map((unique) => {
+  //   const total = totalMap[unique];
+  //   // console.log(totalMap[unique], unique, "unik");
+  //   const sisaInput = sisaMap[unique] || 0;
+
+  //   const sisa = total - sisaInput;
+
+  //   // const sudahInputDN = Object.keys(sisaMap).filter(
+  //   //   (v) => v === totalMapDN[unique.s].length
+  //   // );
+  //   const sudahInputDN = Object.keys(sisaMap).filter(
+  //     (v) => sisaMap[v] === totalMapDN[unique.split(",")[0]]
+  //   );
+  //   Object.keys(sisaMap).filter((v) =>
+  //     console.log(
+  //       v,
+  //       totalMapDN[unique.split(",")[0]],
+  //       sisaMap[v],
+  //       totalMap[v],
+  //       totalMap[unique],
+  //       "total ini"
+  //     )
+  //   );
+
+  //   console.log(
+  //     Object.keys(sisaMap).map((v) =>
+  //       console.log(
+  //         v,
+  //         sisaMap[v],
+  //         totalMap[unique],
+  //         sisaMap[v] === totalMap[unique],
+  //         v,
+  //         "disa"
+  //       )
+  //     )
+  //   );
+
+  //   let status = "Closed";
+  //   if (sisa > 0) {
+  //     console.log(sisaInput, "disini input > 0");
+  //     status = "Open";
+  //     allClosed = false;
+  //     updateODStatus(
+  //       unique,
+  //       sisaInput,
+  //       total,
+  //       Object.keys(totalMapDN).length,
+  //       sudahInputDN.length
+  //     );
+  //   } else if (sisa === 0 && status === "Closed") {
+  //     console.log(sisaInput, "disini input");
+  //     updateODStatus(
+  //       unique,
+  //       sisaInput,
+  //       total,
+  //       Object.keys(totalMapDN).length,
+  //       sudahInputDN.length
+  //     );
+  //   } else if (sisa < 0) {
+  //     return {
+  //       dn_number: unique,
+  //       jumlah_order: jumlahQTY[unique],
+  //       total,
+  //       sisa: 0,
+  //       status,
+  //     };
+  //   }
+
+  //   return {
+  //     dn_number: unique,
+  //     jumlah_order: jumlahQTY[unique],
+  //     total,
+  //     sisa,
+  //     status,
+  //   };
+  // });
+
+  //   setSummaryTable(table);
+
+  // }, [rows, validList, Data, dataLoaded, updateODStatus, uniqueColumn]);
 
   useEffect(() => {
     if (kanban === true) {
@@ -787,131 +1453,367 @@ export default function SmartInputLoop() {
 
   // console.log("summary", summaryTable, validList);
 
+  // useEffect(() => {
+  //   console.log(typeof partListReal, "tipe part");
+  //   if (partListReal.length > 0) {
+  //     console.log(partListReal[1], partListReal[0]);
+  //   } else {
+  //     console.log("index real ga bisa");
+  //   }
+  // }, [partListReal]);
+
+  // const handleInput = async (index, field, value) => {
+  //   // console.log(index, field, value, "ini index");
+  //   const newValue = value.trim();
+  //   const updatedRows = [...rows];
+  //   updatedRows[index][field] = newValue;
+  //   setRows(updatedRows);
+
+  //   const A = updatedRows[index].kanban.trim().toLowerCase();
+  //   const B = updatedRows[index].labelSupplier
+  //     .toLowerCase()
+  //     .slice(0, -1)
+  //     .split("|")[0];
+  //   // .slice(0, -4)
+  //   let isValid = false;
+
+  //   if (A && B) {
+  //     // if (
+  //     //   A.includes(B) ||
+  //     //   B.includes(A) ||
+  //     //   A.split(/\s+/).some((word) => B.includes(word))
+  //     // ) {
+  //     //   isValid = true;
+  //     // }
+
+  //     // const found = selectedData.find(
+  //     //   (d) =>
+  //     //     A.includes(d?.toLowerCase()) ||
+  //     //     A.split(/\s+/).some((word) => B.includes(word))
+  //     // );
+  //     // if (selectedData[0])
+  //     // const found = selectedData[0].split(",").findIndex((d) => {
+  //     //   return A.includes(lastCharAfterSpace(d?.toLowerCase()));
+  //     // });
+  //     const foundIndex = selectedData.findIndex((d) => {
+  //       return A.includes(lastCharAfterSpace(d?.toLowerCase()));
+  //     });
+
+  //     // selectedData.map((d) => {
+  //     //   console.log(lastCharAfterSpace(d?.toLowerCase()), A, "cocok");
+  //     //   // return A.includes(lastCharAfterSpace(d?.toLowerCase()));
+  //     // });
+  //     // console.log(
+  //     //   selectedData[0],
+  //     //   "select data",
+  //     //   A,
+  //     //   selectedData.map((d) => lastCharAfterSpace(d?.toLowerCase()))
+  //     // );
+  //     if (!foundIndex) {
+  //       console.log("ga ketemu");
+  //       isValid = false;
+  //     }
+  //     // const dnFound = Data.find(
+  //     //   (d) =>
+  //     //     A.includes(d?.job_no?.toLowerCase()) ||
+  //     //     (A.split(/\s+/).some((word) =>
+  //     //       d?.job_no?.toLowerCase().includes(word)
+  //     //     ) &&
+  //     //       B === d.part_no?.toLowerCase())
+  //     // );
+
+  //     const dnFound = Data.find((d) => {
+  //       // console.log(uniqueColumn, "Ada job");
+  //       const jobLower = d?.[uniqueColumn]?.toLowerCase();
+  //       const partLower = d?.part_no
+  //         ? d?.part_no.toLowerCase()
+  //         : d?.material.toLowerCase();
+  //       const lastChar = lastCharAfterSpace(jobLower);
+
+  //       const isIncluded = A.includes(lastChar[0]);
+
+  //       const isSamePart = B === partLower || B.includes(jobLower);
+  //       return isIncluded && isSamePart;
+  //     });
+
+  //     // const partFound = Data.find((d) => {
+  //     //   const jobLower = d?.[uniqueColumn]?.toLowerCase();
+  //     //   const lastChar = lastCharAfterSpace(jobLower);
+  //     //   return A.includes(lastChar);
+  //     // });
+
+  //     // if (partFound) {
+  //     //   const partNo = partFound.part_no?.toLowerCase();
+  //     //   setValidPart((prev) => {
+  //     //     const updated = [...prev];
+  //     //     updated[Number(index)] = partNo;
+  //     //     console.log(index, "indek ada ga", updated[Number(index)]);
+  //     //     return updated;
+  //     //   });
+  //     // }
+  //     // console.log("DATA:", Data);
+  //     // console.log("UNIQUE COL:", uniqueColumn);
+
+  //     const partFound = Data.find((d) => {
+  //       const jobLower = d?.[uniqueColumn]?.toLowerCase();
+  //       const lastChar = lastCharAfterSpace(jobLower);
+  //       // console.log("JobLower:", jobLower, "LastChar:", lastChar);
+  //       return A.includes(lastChar);
+  //     });
+
+  //     if (partFound) {
+  //       // console.log(partFound, "part ditemukan");
+  //       const partNo = partFound.part_no
+  //         ? partFound.part_no.toLowerCase()
+  //         : partFound.material.toLowerCase();
+  //       // console.log(partNo, index);
+  //       // console.log("Part Found:", partNo, "Index:", index);
+  //       setValidPart((prev) => {
+  //         const updated = [...prev];
+  //         updated[Number(index)] = partNo;
+  //         return updated;
+  //       });
+  //     } else {
+  //       console.log("Tidak ditemukan part yang cocok");
+  //     }
+
+  //     if (dnFound) {
+  //       isValid = true;
+
+  //       if (
+  //         jumlahKanban[
+  //           `${Data[foundIndex].dn_number}_${Data[foundIndex][uniqueColumn]}`
+  //         ] >=
+  //         endDN[
+  //           `${Data[foundIndex].dn_number}_${Data[foundIndex][uniqueColumn]}`
+  //         ]
+  //       ) {
+  //         isValid = false;
+  //       }
+
+  //       jumlahKanban[
+  //         `${Data[foundIndex].dn_number}_${Data[foundIndex][uniqueColumn]}`
+  //       ] =
+  //         (jumlahKanban[
+  //           `${Data[foundIndex].dn_number}_${Data[foundIndex][uniqueColumn]}`
+  //         ] || 0) + 1;
+  //     } else {
+  //       isValid = false;
+  //       // setValidPart();
+  //     }
+  //   }
+
+  //   const updatedValidList = [...validList];
+  //   updatedValidList[index] = isValid;
+  //   setValidList(updatedValidList);
+
+  //   const changedRow = {
+  //     ...updatedRows[index],
+  //     status: isValid,
+  //   };
+
+  //   try {
+  //     const isRowComplete = rows[index].kanban && rows[index].labelSupplier;
+
+  //     // const dnFound = Data.find((d) => {
+  //     //   const jobLower = d?.job_no?.toLowerCase();
+  //     //   const lastChar = lastCharAfterSpace(jobLower);
+
+  //     //   return (
+  //     //     rows[index].kanban.includes(lastChar) &&
+  //     //     rows[index].labelSupplier === d?.part_no?.toLowerCase()
+  //     //   );
+  //     // });
+
+  //     const dnFound = Data.find((d) => {
+  //       const jobLower = d?.[uniqueColumn]?.toLowerCase();
+  //       const partLower = d?.part_no
+  //         ? d?.part_no.toLowerCase()
+  //         : d?.material.toLowerCase();
+  //       const lastChar = lastCharAfterSpace(jobLower);
+
+  //       const isIncluded = rows[index].kanban
+  //         .toLowerCase()
+  //         .includes(lastChar[0]);
+  //       const isSamePart =
+  //         rows[index].labelSupplier.toLowerCase().slice(0, -1).split("|")[0] ===
+  //         partLower;
+
+  //       return isIncluded && isSamePart;
+  //     });
+
+  //     const partFound = Data.find((d) => {
+  //       const jobLower = d?.[uniqueColumn]?.toLowerCase();
+  //       const lastChar = lastCharAfterSpace(jobLower);
+  //       // console.log("JobLower:", jobLower, "LastChar:", lastChar);
+  //       return A.includes(lastChar);
+  //     });
+
+  //     // if (partFound) {
+  //     //   console.log(partFound, "part ditemukan");
+  //     //   const partNo = partFound.part_no?.toLowerCase();
+  //     //   console.log(partNo, index);
+  //     //   console.log("Part Found:", partNo, "Index:", index);
+  //     //   setValidPart((prev) => {
+  //     //     const updated = [...prev];
+  //     //     updated[Number(index)] = partNo;
+  //     //     return updated;
+  //     // });
+  //     if (isRowComplete) {
+  //       console.log("isRowcomplete, index", index);
+  //       const res = await fetch(
+  //         `${import.meta.env.VITE_BACKEND_URL}/api/inputQR`,
+  //         {
+  //           method: "POST",
+  //           headers: { "Content-Type": "application/json" },
+  //           body: JSON.stringify({
+  //             row: changedRow,
+  //             index,
+  //             id,
+  //             selectedDate,
+  //             dnFound,
+  //             validPart: String(
+  //               partFound?.part_no || partFound?.material
+  //             ).toUpperCase(),
+  //           }),
+  //         }
+  //       );
+
+  //       const result = await res.json();
+  //       console.log(
+  //         "Submitted row:",
+  //         changedRow,
+  //         "Result:",
+  //         result,
+  //         JSON.stringify({
+  //           row: changedRow,
+  //           index,
+  //           id,
+  //           selectedDate,
+  //           dnFound,
+  //           validPart: String(
+  //             partFound?.part_no || partFound?.material
+  //           ).toUpperCase(),
+  //         })
+  //       );
+  //     }
+  //   } catch (err) {
+  //     console.error("Failed to save input:", err);
+  //   }
+  //   if (field === "kanban" && newValue !== "") {
+  //     // setTimeout(() => {
+  //     //   inputRefs.current[index * 2 + 1]?.focus();
+  //     // }, 3);
+  //     if (value.endsWith("\n")) {
+  //       setTimeout(() => {
+  //         inputRefs.current[index * 2 + 1]?.focus();
+  //       }, 1);
+  //     }
+  //   }
+
+  //   if (field === "labelSupplier" && newValue !== "") {
+  //     const last10Filled = updatedRows
+  //       .slice(-10)
+  //       .every((r) => r.kanban && r.labelSupplier);
+  //     // console.log("last10Filled:", last10Filled);
+  //     // console.log("last 10 rows:", updatedRows.slice(-10));
+
+  //     if (last10Filled) {
+  //       const newRows = Array.from({ length: 10 }, () => ({
+  //         kanban: "",
+  //         labelSupplier: "",
+  //       }));
+  //       setRows((prev) => [...prev, ...newRows]);
+
+  //       if (value.endsWith("\n")) {
+  //         //value.length >= 8 ||
+  //         setTimeout(() => {
+  //           inputRefs.current[(index + 1) * 2]?.focus();
+  //         }, 1);
+  //       }
+  //     } else {
+  //       if (value.endsWith("\n")) {
+  //         setTimeout(() => {
+  //           inputRefs.current[(index + 1) * 2]?.focus();
+  //         }, 1);
+  //       }
+  //     }
+  //   }
+  // };
+
   const handleInput = async (index, field, value) => {
     const newValue = value.trim();
     const updatedRows = [...rows];
     updatedRows[index][field] = newValue;
     setRows(updatedRows);
 
-    const A = updatedRows[index].kanban.toLowerCase();
-    const B = updatedRows[index].labelSupplier
-      .toLowerCase()
-      .slice(0, -4)
-      .split("|")[0];
-    let isValid = false;
+    const row = updatedRows[index];
 
-    if (A && B) {
-      // if (
-      //   A.includes(B) ||
-      //   B.includes(A) ||
-      //   A.split(/\s+/).some((word) => B.includes(word))
-      // ) {
-      //   isValid = true;
-      // }
+    const dateObj = new Date(selectedDate);
+    const startDate = new Date(dateObj.setHours(0, 0, 0, 0));
+    const endDate = new Date(dateObj.setHours(23, 59, 59, 999));
 
-      // const found = selectedData.find(
-      //   (d) =>
-      //     A.includes(d?.toLowerCase()) ||
-      //     A.split(/\s+/).some((word) => B.includes(word))
-      // );
-      const found = selectedData[0].split(",").findIndex((d) => {
-        return A.includes(lastCharAfterSpace(d)?.toLowerCase());
-      });
+    console.log(separator, "pemisah");
 
-      if (!found) {
-        isValid = false;
-      }
-      // const dnFound = Data.find(
-      //   (d) =>
-      //     A.includes(d?.job_no?.toLowerCase()) ||
-      //     (A.split(/\s+/).some((word) =>
-      //       d?.job_no?.toLowerCase().includes(word)
-      //     ) &&
-      //       B === d.part_no?.toLowerCase())
-      // );
+    const match = matchEntryWithMergedData(
+      Data,
+      row,
+      startDate,
+      endDate,
+      separator
+    );
+    console.log(match, "ini cocok ga");
 
-      const dnFound = Data.find((d) => {
-        const jobLower = d?.job_no?.toLowerCase();
-        const partLower = d?.part_no?.toLowerCase();
-        const lastChar = lastCharAfterSpace(jobLower);
+    const isValid = match.matchFound;
 
-        const isIncluded = A.includes(lastChar);
-        const isSamePart = B === partLower;
-        return isIncluded && isSamePart;
-      });
-
-      if (dnFound) {
-        isValid = true;
-      } else {
-        isValid = false;
-      }
-    }
+    const partNo = match.rawData?.part_no || match.rawData?.material;
 
     const updatedValidList = [...validList];
     updatedValidList[index] = isValid;
     setValidList(updatedValidList);
 
+    setValidPart((prev) => {
+      const updated = [...prev];
+      updated[Number(index)] = partNo?.toLowerCase();
+      return updated;
+    });
+
+    // Kirim ke server kalau valid
+    // if (isValid) {
     const changedRow = {
-      ...updatedRows[index],
+      ...row,
       status: isValid,
     };
 
     try {
-      const isRowComplete = rows[index].kanban && rows[index].labelSupplier;
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/inputQR`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            row: changedRow,
+            index,
+            id,
+            selectedDate,
+            dnFound: match.rawData,
+            validPart: String(partNo).toUpperCase(),
+          }),
+        }
+      );
 
-      // const dnFound = Data.find((d) => {
-      //   const jobLower = d?.job_no?.toLowerCase();
-      //   const lastChar = lastCharAfterSpace(jobLower);
-
-      //   return (
-      //     rows[index].kanban.includes(lastChar) &&
-      //     rows[index].labelSupplier === d?.part_no?.toLowerCase()
-      //   );
-      // });
-
-      const dnFound = Data.find((d) => {
-        const jobLower = d?.job_no?.toLowerCase();
-        const partLower = d?.part_no?.toLowerCase();
-        const lastChar = lastCharAfterSpace(jobLower);
-
-        const isIncluded = rows[index].kanban.toLowerCase().includes(lastChar);
-        const isSamePart =
-          rows[index].labelSupplier.toLowerCase().slice(0, -4).split("|")[0] ===
-          partLower;
-
-        return isIncluded && isSamePart;
-      });
-
-      if (isRowComplete) {
-        const res = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/inputQR`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              row: changedRow,
-              index,
-              id,
-              selectedDate,
-              dnFound,
-            }),
-          }
-        );
-
-        const result = await res.json();
-        // console.log("Submitted row:", changedRow, "Result:", result);
-      }
+      const result = await res.json();
+      console.log("Result submit:", result);
     } catch (err) {
-      console.error("Failed to save input:", err);
+      console.error("Failed to submit row:", err);
     }
+    // }
+
     if (field === "kanban" && newValue !== "") {
-      // setTimeout(() => {
-      //   inputRefs.current[index * 2 + 1]?.focus();
-      // }, 3);
-      if (value.length >= 8 || value.endsWith("\n")) {
+      if (value.endsWith("\n")) {
         setTimeout(() => {
-          inputRefs.current[(index + 1) * 2]?.focus();
-        }, 10);
+          inputRefs.current[index * 2 + 1]?.focus();
+        }, 1);
       }
     }
 
@@ -919,8 +1821,6 @@ export default function SmartInputLoop() {
       const last10Filled = updatedRows
         .slice(-10)
         .every((r) => r.kanban && r.labelSupplier);
-      // console.log("last10Filled:", last10Filled);
-      // console.log("last 10 rows:", updatedRows.slice(-10));
 
       if (last10Filled) {
         const newRows = Array.from({ length: 10 }, () => ({
@@ -928,33 +1828,25 @@ export default function SmartInputLoop() {
           labelSupplier: "",
         }));
         setRows((prev) => [...prev, ...newRows]);
+      }
 
-        if (value.length >= 8 || value.endsWith("\n")) {
-          setTimeout(() => {
-            inputRefs.current[(index + 1) * 2]?.focus();
-          }, 10);
-        }
-      } else {
-        if (value.length >= 8 || value.endsWith("\n")) {
-          setTimeout(() => {
-            inputRefs.current[(index + 1) * 2]?.focus();
-          }, 10);
-        }
+      if (value.endsWith("\n")) {
+        setTimeout(() => {
+          inputRefs.current[(index + 1) * 2]?.focus();
+        }, 1);
       }
     }
   };
 
   const handleInputKanban = async (index, field, value) => {
-    const newValue = value.trim();
+    const newValue = value;
     const updatedRows = [...rows];
     updatedRows[index][field] = newValue;
     setRows(updatedRows);
 
-    const A = updatedRows[index].kanban
-      .toLowerCase()
-      .trim()
-      .slice(0, -4)
-      .split("|")[0];
+    const A = updatedRows[index].kanban.trim().toLowerCase().trim();
+    // .slice(0, -4)
+    // .split("|")[0];
     let isValid = false;
     // console.log(Data, fullData);
     // const dnFound = Data.find((d) => {
@@ -973,26 +1865,36 @@ export default function SmartInputLoop() {
     //   );
     // });
 
-    const found = selectedData[0].split(",").findIndex((d) => {
-      return A.includes(d?.toLowerCase().trim());
+    // const found = selectedData[0].split(",").findIndex((d) => {
+    //   return A.includes(d?.toLowerCase().trim());
+    // });
+    const found = selectedData.findIndex((d) => {
+      return A.includes(
+        lastCharAfterSpace(normalizeText(d?.toLowerCase()), separator)
+      );
     });
 
     if (found == -1) {
+      console.log("dnfound");
       isValid = false;
     }
 
     if (found !== -1) {
+      console.log("jumlah + 1");
       isValid = true;
       if (
-        jumlahKanban[`${Data[found].dn_number},${Data[found].job_no}`] >=
-        endDN[`${Data[found].dn_number},${Data[found].job_no}`]
+        jumlahKanban[
+          `${Data[found].dn_number},${Data[found][uniqueColumn[0]]}`
+        ] > endDN[`${Data[found].dn_number},${Data[found][uniqueColumn[0]]}`]
       ) {
+        console.log("jumlahkanban");
         isValid = false;
       }
 
-      jumlahKanban[`${Data[found].dn_number},${Data[found].job_no}`] =
-        (jumlahKanban[`${Data[found].dn_number},${Data[found].job_no}`] || 0) +
-        1;
+      jumlahKanban[`${Data[found].dn_number},${Data[found][uniqueColumn[0]]}`] =
+        (jumlahKanban[
+          `${Data[found].dn_number},${Data[found][uniqueColumn[0]]}`
+        ] || 0) + 1;
       // console.log(String(Data[found].dn_number), "dn");
 
       // Data.forEach((item) => {
@@ -1019,7 +1921,7 @@ export default function SmartInputLoop() {
     };
 
     try {
-      const isRowComplete = rows[index].kanban;
+      const isRowComplete = rows[index].kanban.endsWith("\n");
 
       // const dnFound = Data.find(
       //   (d) =>
@@ -1040,6 +1942,7 @@ export default function SmartInputLoop() {
               index,
               id,
               selectedDate,
+              validPart: undefined,
             }),
           }
         );
@@ -1055,10 +1958,10 @@ export default function SmartInputLoop() {
       //   inputRefs.current[index * 2 + 2]?.focus();
       // }, 3);
 
-      if (value.length >= 8 || value.endsWith("\n")) {
+      if (value.endsWith("\n")) {
         setTimeout(() => {
           inputRefs.current[(index + 2) * 2]?.focus();
-        }, 10);
+        }, 1);
       }
     }
     const last10Filled = updatedRows.slice(-10).every((r) => r.kanban);
@@ -1075,20 +1978,62 @@ export default function SmartInputLoop() {
       // setTimeout(() => {
       //   inputRefs.current[(index + 1) * 2]?.focus();
       // }, 3);
-      if (value.length >= 8 || value.endsWith("\n")) {
+      if (value.endsWith("\n")) {
         setTimeout(() => {
           inputRefs.current[(index + 1) * 2]?.focus();
-        }, 10);
+        }, 1);
       }
     } else {
       // setTimeout(() => {
       //   inputRefs.current[(index + 1) * 2]?.focus();
       // }, 3);
-      if (value.length >= 8 || value.endsWith("\n")) {
+      if (value.endsWith("\n")) {
         setTimeout(() => {
           inputRefs.current[(index + 1) * 2]?.focus();
-        }, 10);
+        }, 1);
       }
+    }
+  };
+
+  const handleKirimDN = async () => {
+    setIsSubmitting(true);
+    try {
+      console.log(cycleFilter);
+      if (!cycleFilter) return;
+      let currentShift = shift;
+      if (!currentShift || currentShift === "-") {
+        const proses = await checkProsesSekarang();
+        currentShift = proses?.kode_shift;
+      }
+      const res = await api.post("/track/getCode", {
+        customerId: id,
+        tanggal: selectedDate,
+        cycle: cycleFilter || 1,
+        shift: currentShift,
+      });
+
+      if (res.data.shift && res.data?.verificationCode) {
+        setqrCodes((prev) => {
+          const newCode =
+            res.data.verificationCode || res.data.data.verificationCode;
+          return prev.includes(newCode) || newCode == null
+            ? prev
+            : [...prev, newCode];
+        });
+        setShiftWaktuMap((prev) => ({
+          ...prev,
+          [cycleFilter]: {
+            waktuAktual: res.data.waktuAktual
+              ? moment(res.data.waktuAktual).format("DD-MM-YYYY HH:mm")
+              : " ",
+            shift: res.data.shift || " ",
+          },
+        }));
+      }
+    } catch (logErr) {
+      console.error("Gagal kirim log ke server:", logErr);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1120,9 +2065,35 @@ export default function SmartInputLoop() {
     }
   }, [rows, shouldAutoFocus]);
 
+  console.log(shiftWaktuMap, "isi shiftWaktuMap");
+  // <tr>
+  //   <td>{cycle}</td>
+
+  //   <td>         {/* {shift &&
+  //   //         `${moment()
+  //   //           .tz("Asia/Jakarta")
+  //   //           .format("DD-MM-YYYY")} ${data.waktuAktual}`} */}
+
+  //   </td>
+  //   <td>{data.shift}</td>
+
+  // </tr>
+
   return (
     <div className="p-4">
-      <h1 className="font-bold text-2xl mb-4">SCAN QR</h1>
+      <div className="mb-6 flex items-center justify-start pt-10 align-middle gap-3">
+        <h1 className="font-bold text-2xl">SCAN QR</h1>
+        {/* <button
+          onClick={() => setIsOpen(!isOpen)}
+          type="button"
+          className={`${
+            isOpen ? "text-transparent" : "text-gray-500"
+          } cursor-pointer`}
+        >
+          <GiHamburgerMenu size={17} />
+        </button> */}
+      </div>
+
       <div className="flex gap-4 mb-6 flex-wrap">
         <DatePicker
           selected={selectedDate}
@@ -1195,6 +2166,13 @@ export default function SmartInputLoop() {
                   onInput={(e) =>
                     handleInput(index, "kanban", e.currentTarget.value)
                   }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault(); // biar nggak submit form atau fokus next
+                      const updatedValue = row.kanban + "\n";
+                      handleInput(index, "kanban", updatedValue);
+                    }
+                  }}
                 />
                 <label className="text-xs text-white font-medium">
                   Label Supplier
@@ -1208,6 +2186,13 @@ export default function SmartInputLoop() {
                   onInput={(e) =>
                     handleInput(index, "labelSupplier", e.currentTarget.value)
                   }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault(); // biar nggak submit form atau fokus next
+                      const updatedValue = row.labelSupplier + "\n";
+                      handleInput(index, "labelSupplier", updatedValue);
+                    }
+                  }}
                 />
                 <div className="text-center items-center">
                   <p
@@ -1215,7 +2200,14 @@ export default function SmartInputLoop() {
                       validList[index] ? "bg-green-700" : "bg-red-800"
                     }`}
                   >
-                    {validList[index] ? "OK" : "NG"}
+                    {validList[index] ? "OK" : `NG`}
+                    {/* ${
+                          row.validPart ??
+                          (Array.isArray(partListReal) &&
+                          partListReal.length > index
+                            ? String(partListReal[Number(index)]).toUpperCase()
+                            : "")
+                        }`} */}
                   </p>
                 </div>
               </div>
@@ -1225,6 +2217,20 @@ export default function SmartInputLoop() {
           <div className="min-w-[200px] space-y-4">
             <div className="border border-gray-300 p-4 rounded bg-white max-h-[600px] overflow-y-auto">
               <h2 className="text-lg font-semibold mb-2">Summary Table</h2>
+              <select
+                className="border p-1 mb-2"
+                value={cycleFilter}
+                onChange={(e) => setCycleFilter(e.target.value)}
+              >
+                <option value="">All Cycles</option>
+                {[...new Set(summaryTable.map((row) => row.cycle))].map(
+                  (cycle, i) => (
+                    <option key={i} value={cycle}>
+                      {cycle}
+                    </option>
+                  )
+                )}
+              </select>
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="bg-gray-100">
@@ -1235,6 +2241,7 @@ export default function SmartInputLoop() {
                     <th>Qty Order</th>
                     <th className="border px-2 py-1">Qty Kanban</th>
                     <th className="border px-2 py-1">Sisa Kanban</th>
+                    <th className="border px-2 py-1">Cycle</th>
                     <th className="border px-2 py-1">Status</th>
                   </tr>
                 </thead>
@@ -1247,9 +2254,10 @@ export default function SmartInputLoop() {
                       <td className="border px-2 py-1">{row.jumlah_order}</td>
                       <td className="border px-2 py-1">{row.total}</td>
                       <td className="border px-2 py-1">{row.sisa}</td>
+                      <td className="border px-2 py-1">{row.cycle}</td>
                       <td
                         className={`border px-2 py-1 font-semibold ${
-                          row.status === "Open"
+                          row.status === "Closed"
                             ? "text-[#27b387]"
                             : "text-[#f33d3a]"
                         }`}
@@ -1260,24 +2268,32 @@ export default function SmartInputLoop() {
                   ))}
                 </tbody>
               </table>
+
               <table className="my-6 h-[60px]">
                 <thead>
                   <tr>
+                    <th className="text-xs w-[150px]">Cycle</th>
                     <th className="text-xs w-[150px]">Waktu Selesai: </th>
                     <th className="text-xs">Shift</th>
                   </tr>
                 </thead>
-                <tbody>
-                  <tr>
-                    <td>
-                      {shift &&
-                        `${moment()
-                          .tz("Asia/Jakarta")
-                          .format("DD-MM-YYYY")} ${waktuAktual}`}
-                    </td>
 
-                    <td>{shift}</td>
-                  </tr>
+                <tbody>
+                  {Object.keys(shiftWaktuMap).length > 0 ? (
+                    Object.entries(shiftWaktuMap).map(([cycle, data]) => (
+                      <tr key={cycle}>
+                        <td>{cycle}</td>
+                        <td>{` ${data.waktuAktual ?? "-"}`}</td>
+                        <td>{data.shift ?? "-"}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td className="text-center text-gray-400 py-2"></td>
+                      <td className="text-center text-gray-400 py-2"></td>
+                      <td className="text-center text-gray-400 py-2"></td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1304,6 +2320,13 @@ export default function SmartInputLoop() {
                   onInput={(e) =>
                     handleInputKanban(index, "kanban", e.currentTarget.value)
                   }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault(); // biar nggak submit form atau fokus next
+                      const updatedValue = row.kanban + "\n";
+                      handleInputKanban(index, "kanban", updatedValue);
+                    }
+                  }}
                 />
                 <div className="text-center items-center">
                   <p
@@ -1361,8 +2384,20 @@ export default function SmartInputLoop() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td>
+                  {Object.keys(shiftWaktuMap).length > 0 ? (
+                    Object.entries(shiftWaktuMap).map(([cycle, data]) => (
+                      <tr key={cycle}>
+                        <td>{` ${data.waktuAktual ?? "-"}`}</td>
+                        <td>{data.shift ?? "-"}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td className="text-center text-gray-400 py-2"></td>
+                      <td className="text-center text-gray-400 py-2"></td>
+                    </tr>
+                  )}
+                  {/* <td>
                       {shift &&
                         `${moment()
                           .tz("Asia/Jakarta")
@@ -1370,13 +2405,55 @@ export default function SmartInputLoop() {
                           "HH:mm"
                         )}`}
                     </td>
-                    <td>{shift}</td>
-                  </tr>
+                    <td>{shift}</td> */}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
+      )}
+
+      {dataLoaded && (
+        <button
+          onClick={handleKirimDN}
+          disabled={isSubmitting}
+          className={`my-10 float-right px-6 py-2 rounded-lg font-medium transition-all duration-200
+    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
+    ${
+      isSubmitting
+        ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+        : "bg-[#105bdf] hover:bg-blue-700 text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+    }
+  `}
+        >
+          {isSubmitting ? (
+            <span className="flex items-center justify-center">
+              <svg
+                className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-600"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              Mengonfirmasi...
+            </span>
+          ) : (
+            "Closed Parsial"
+          )}
+        </button>
       )}
     </div>
   );

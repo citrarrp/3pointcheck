@@ -109,7 +109,7 @@ export default function ScanFinishPage() {
               </div>
             </>
           ) : (
-            <p className="text-gray-600">{"Belum ada hasil scan."}</p>
+            <p className="text-gray-600">{"Belum ada hasil verifikasi."}</p>
           )}
         </div>
         {scanResult && result.length > 0 && (

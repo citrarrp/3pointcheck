@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 
 export const generateAccessToken = (user) => {
   return jwt.sign(
-    { id: user.id, username: user.username, roles: user.roles },
+    { id: user.id, fullname: user.fullname, roles: user.roles },
     process.env.SECRET_ACCESS_TOKEN,
     { expiresIn: "3h" }
   );
@@ -13,7 +13,7 @@ export const generateAccessToken = (user) => {
 
 export const generateRefreshToken = (user) => {
   return jwt.sign(
-    { id: user.id, username: user.username, roles: user.roles },
+    { id: user.id, fullname: user.fullname, roles: user.roles },
     process.env.REFRESH_TOKEN,
     {
       expiresIn: "7d",
@@ -92,15 +92,15 @@ export const createUser = async (req, res) => {
     return res.status(400).json({ message: "Request body is missing" });
   }
 
-  const { username, password, roles } = req.body;
+  const { fullname, password, roles } = req.body;
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
 
   try {
-    let User = await user.findOne({ username });
+    let User = await user.findOne({ fullname });
     if (User) return res.status(400).json({ message: "User already exists" });
 
-    User = new user({ username, password: hashedPassword, roles });
+    User = new user({ fullname, password: hashedPassword, roles });
     await User.save();
 
     return res
@@ -115,10 +115,10 @@ export const createUser = async (req, res) => {
 };
 
 export const loginUser = async (req, res) => {
-  const { username, password } = req.body;
+  const { fullname, password } = req.body;
 
   try {
-    const existingUser = await user.findOne({ username: username });
+    const existingUser = await user.findOne({ fullname: fullname });
     if (!existingUser) {
       return res
         .status(404)
@@ -149,7 +149,7 @@ export const loginUser = async (req, res) => {
         accessToken,
         existingUser: {
           id: existingUser._id,
-          username: existingUser.username,
+          fullname: existingUser.fullname,
           role: existingUser.roles,
         },
       },

@@ -49,6 +49,10 @@ const trackingSchema = new mongoose.Schema({
     type: String,
     default: "-",
   },
+  qty: {
+    type: Number,
+    default: 0,
+  },
   persentase: {
     type: Number,
     required: true,

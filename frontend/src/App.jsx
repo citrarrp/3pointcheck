@@ -23,6 +23,14 @@ import HistoryPage from "./pages/History.jsx";
 import ScanFinishPage from "./pages/scannerFinish.jsx";
 import AbsensiInPage from "./pages/absensiIn.jsx";
 import AbsensiOutPage from "./pages/absensiOut.jsx";
+import MaterialUpload from "./pages/uploadMasterpart.jsx";
+import MaterialTable from "./components/tablePartmaterial.jsx";
+import InputSmartLoop from "./components/qualityCheck.jsx";
+import RequireAuth from "./middlewares/requireAuth.jsx";
+import PageUniqueMaterial from "./pages/materialPage.jsx";
+import ProductionHome from "./middlewares/productionOnly.jsx";
+import ChangePasswordPage from "./pages/changePWPage.jsx";
+import InputSmart from "./components/threePointcheck.jsx";
 // import AbsensiPage from "./pages/absensiIn.jsx";
 function App() {
   return (
@@ -41,21 +49,54 @@ function App() {
           />
 
           <Route path="/" element={<MainLayout />}>
-            <Route path="/" element={<Home />} />
+            <Route
+              path="/"
+              element={
+                <ProductionHome>
+                  <Home />{" "}
+                </ProductionHome>
+              }
+            />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/label" element={<Label />} />
-            <Route path="/printLabel" element={<LabelPage />} />
-            <Route path="/updateDelivery" element={<UpdateData />} />
+            <Route path="/masterMaterial" element={<MaterialUpload />} />
+            <Route path="/masterMaterial/update" element={<MaterialTable />} />
             <Route
-              path="/printLabel/:customerId"
-              element={<UniqueCodePage />}
+              path="/printLabel"
+              element={
+                <RequireAuth>
+                  <LabelPage />
+                </RequireAuth>
+              }
             />
+            <Route path="/updateDelivery" element={<UpdateData />} />
+            {/* <Route
+              path="/printLabel/:customerId"
+              element={
+                <RequireAuth>
+                  <UniqueCodePage />
+                </RequireAuth>
+              }
+            /> */}
             <Route
-              path="/printLabel/:customerId/:uniqueCode"
-              element={<PrintLabel />}
+              path="/printLabel/:line"
+              element={
+                <RequireAuth>
+                  <PageUniqueMaterial />
+                </RequireAuth>
+              }
+            />
+
+            <Route
+              path="/printLabel/:line/:uniqueCode"
+              element={
+                <RequireAuth>
+                  <PrintLabel />
+                </RequireAuth>
+              }
             />
             <Route path="/scanQR" element={<ScanQR />} />
-            <Route path="/scanQR/:id" element={<SmartInputLoop />} />
+            <Route path="/scanQR/:id" element={<InputSmart />} />
             <Route path="/scanFinishPrepare" element={<ScanFinishPage />} />
             {/* 
             <Route
@@ -79,7 +120,8 @@ function App() {
             <Route path="/absensi/In" element={<AbsensiInPage />} />
             <Route path="/absensi/Out" element={<AbsensiOutPage />} />
             <Route path="/scanAbsensi" element={<ScannerPage />} />
-            <Route path="register" element={<RegisterPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forget-password" element={<ChangePasswordPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import Tes from "../models/tes.js";
 import moment from "moment-timezone";
 import trackingDelv from "../models/tracking.js";
+import materialCustomer from "../models/masterPart.js";
+import { ObjectId } from "bson";
 
 export const getSelectedCustomer = async (req, res) => {
   try {
@@ -15,6 +17,262 @@ export const getSelectedCustomer = async (req, res) => {
   }
 };
 
+export const getDatabyDate = async (req, res) => {
+  const { customer, date } = req.query;
+
+  if (!date) {
+    return res
+      .status(400)
+      .json({ error: "Parameter 'date' wajib diisi (format: YYYY-MM-DD)" });
+  }
+
+  try {
+    // const startDate = new Date(`${date}T00:00:00.000Z`);
+    // const endDate = new Date(`${date}T23:59:59.999Z`);
+
+    const startDate = new Date(`${date}T00:00:00.000+07:00`);
+    const endDate = new Date(`${date}T23:59:59.999+07:00`);
+    if (!ObjectId.isValid(customer)) {
+      return res.status(400).json({ error: "customerId tidak valid" });
+    }
+
+    console.log(date, "masuk");
+    const test = [
+      { $match: { _id: new ObjectId(customer) } },
+      { $unwind: "$kolomSelected" },
+
+      // Gabungkan per index
+      {
+        $addFields: {
+          "kolomSelected.mergedData": {
+            $map: {
+              input: { $range: [0, { $size: "$kolomSelected.data" }] },
+              as: "idx",
+              in: {
+                $mergeObjects: [
+                  { $arrayElemAt: ["$kolomSelected.data", "$$idx"] },
+                  {
+                    selectedData: {
+                      $arrayElemAt: ["$kolomSelected.selectedData", "$$idx"],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      },
+
+      { $unwind: "$kolomSelected.mergedData" },
+
+      {
+        $replaceRoot: { newRoot: "$kolomSelected.mergedData" },
+      },
+
+      {
+        $addFields: {
+          delivery_date_parsed: { $toDate: "$delivery_date" },
+        },
+      },
+
+      {
+        $match: {
+          delivery_date_parsed: {
+            $gte: startDate,
+            $lte: endDate,
+          },
+        },
+      },
+
+      {
+        $project: {
+          dn_number: 1,
+          part_name: 1,
+          qty: 1,
+          job_no: 1,
+          material: 1,
+          material_description: 1,
+          customer_material: 1,
+          "order_(pcs)": 1,
+          delivery_cycle: 1,
+          delivery_date: 1,
+          delivery_date_parsed: 1,
+          selectedData: 1,
+        },
+      },
+    ];
+
+    const result = await Tes.aggregate(test);
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: "Data berhasil diambil",
+    });
+  } catch (err) {
+    console.error(err);
+    res
+      .status(500)
+      .json({ success: false, message: "Terjadi kesalahan server" });
+  }
+};
+
+export const getUniqueDataAll = async (req, res) => {
+  try {
+    const test = [
+      { $unwind: "$kolomSelected" },
+
+      {
+        $addFields: {
+          "kolomSelected.mergedData": {
+            $map: {
+              input: { $range: [0, { $size: "$kolomSelected.data" }] },
+              as: "idx",
+              in: {
+                $mergeObjects: [
+                  { $arrayElemAt: ["$kolomSelected.data", "$$idx"] },
+                  {
+                    selectedData: {
+                      $arrayElemAt: ["$kolomSelected.selectedData", "$$idx"],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      },
+
+      { $unwind: "$kolomSelected.mergedData" },
+      { $addFields: { "kolomSelected.mergedData.kanban": "$kanban" } },
+
+      { $replaceRoot: { newRoot: "$kolomSelected.mergedData" } },
+      { $match: { customer_material: { $exists: true, $ne: null } } },
+
+      {
+        $group: {
+          _id: "$customer_material",
+          doc: { $first: "$$ROOT" },
+        },
+      },
+      {
+        $replaceRoot: {
+          newRoot: "$doc",
+        },
+      },
+
+      {
+        $project: {
+          _id: 1,
+          part_name: 1,
+          qty: 1,
+          job_no: 1,
+          material: 1,
+          material_description: 1,
+          customer_material: 1,
+          delivery_cycle: 1,
+          line: 1,
+          customer: 1,
+          delivery_date: 1,
+          selectedData: 1,
+          kanban: 1,
+        },
+      },
+    ];
+
+    const result = await Tes.aggregate(test);
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: "Data berhasil diambil",
+    });
+  } catch (err) {
+    console.error(err);
+    res
+      .status(500)
+      .json({ success: false, message: "Terjadi kesalahan server" });
+  }
+};
+
+export const getUniqueDatabyCustomer = async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "customerId tidak valid" });
+    }
+
+    const test = [
+      { $match: { _id: new ObjectId(id) } },
+      { $unwind: "$kolomSelected" },
+
+      {
+        $addFields: {
+          "kolomSelected.mergedData": {
+            $map: {
+              input: { $range: [0, { $size: "$kolomSelected.data" }] },
+              as: "idx",
+              in: {
+                $mergeObjects: [
+                  { $arrayElemAt: ["$kolomSelected.data", "$$idx"] },
+                  {
+                    selectedData: {
+                      $arrayElemAt: ["$kolomSelected.selectedData", "$$idx"],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      },
+
+      { $unwind: "$kolomSelected.mergedData" },
+      { $addFields: { "kolomSelected.mergedData.kanban": "$kanban" } },
+
+      { $replaceRoot: { newRoot: "$kolomSelected.mergedData" } },
+
+      {
+        $group: {
+          _id: "$material",
+          doc: { $first: "$$ROOT" },
+        },
+      },
+      {
+        $replaceRoot: {
+          newRoot: "$doc",
+        },
+      },
+
+      {
+        $project: {
+          part_name: 1,
+          qty: 1,
+          job_no: 1,
+          material: 1,
+          material_description: 1,
+          customer_material: 1,
+          delivery_cycle: 1,
+          line: 1,
+          customer: 1,
+          delivery_date: 1,
+          selectedData: 1,
+          kanban: 1,
+        },
+      },
+    ];
+
+    const result = await Tes.aggregate(test);
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: "Data berhasil diambil",
+    });
+  } catch (err) {
+    console.error(err);
+    res
+      .status(500)
+      .json({ success: false, message: "Terjadi kesalahan server" });
+  }
+};
 export const getData = async (req, res) => {
   try {
     let { search = "", page = 1, limit } = req.query;
@@ -109,7 +367,9 @@ export const createData = async (req, res) => {
     sourceValueLabel,
     separator,
     selectedColumns,
+    dataReal,
     selectedCustomer,
+    selectedFields,
     uniquePartName,
     tracking,
     kanban,
@@ -123,26 +383,89 @@ export const createData = async (req, res) => {
       .json({ success: false, message: "Please provide all fields" });
   }
 
-  const updatedKolomSelected = {
-    data: kolomSelected,
-    createdAt: now,
-    selectedData: selectedData,
-    sequence: uniquePartName,
-  };
-
-  const payload = {
-    nama,
-    kolomSelected: updatedKolomSelected,
-    sourceValueLabel,
-    separator,
-    selectedColumns,
-    selectedCustomer,
-    kanban,
-  };
-
-  // console.log(payload, "data masuk");
-
   try {
+    // const materialData = await materialCustomer.find({
+    //   customer_material: { $in: kolomSelected.map((d) => d.customer_material) },
+    // });
+
+    const customerMaterials = kolomSelected
+      .map((d) => d.customer_material)
+      .filter(Boolean);
+
+    const materials = kolomSelected.map((d) => d.material).filter(Boolean);
+
+    const materialData = await materialCustomer.find({
+      $or: [
+        { customer_material: { $in: customerMaterials } },
+        { material: { $in: materials } },
+      ],
+    });
+    console.log(kolomSelected, customerMaterials, materials);
+
+    console.log(materialData[0]);
+    if (!materialData) {
+      return res.status(404).json({ message: "Material tidak ditemukan" });
+    }
+
+    const updatedKolomSelected = {
+      data: kolomSelected.map((dataItem) => {
+        // const matchingMaterial = materialData.find(
+        //   (m) => m.customer_material === dataItem.customer_material
+        // );
+        const matchingMaterial = materialData.find((m) => {
+          if (dataItem.customer_material) {
+            return m.customer_material === dataItem.customer_material;
+          } else if (dataItem.material) {
+            if (dataItem.customer) {
+              return (
+                m.material === dataItem.material &&
+                m.customer === dataItem.customer
+              );
+            } else {
+              return m.material === dataItem.material;
+            }
+          }
+        });
+
+        console.log(matchingMaterial, "ini cocok");
+        return {
+          ...dataItem,
+          material: dataItem?.material
+            ? dataItem.material
+            : matchingMaterial?.material || "",
+          material_description: dataItem?.description
+            ? dataItem.description
+            : matchingMaterial?.material_description || "",
+          customer_material_description: dataItem.customer_material_description
+            ? dataItem.customer_material_description
+            : matchingMaterial?.customer_material_description || "",
+          customer_material: dataItem.customer_material
+            ? dataItem.customer_material
+            : matchingMaterial?.customer_material || "",
+          line: matchingMaterial?.line,
+          customer: matchingMaterial?.customer_description,
+        };
+      }),
+      createdAt: now,
+      selectedData: selectedData,
+      sequence: uniquePartName,
+    };
+
+    const payload = {
+      nama,
+      kolomSelected: updatedKolomSelected,
+      sourceValueLabel,
+      separator,
+      selectedColumns,
+      selectedCustomer,
+      selectedFields,
+      dataReal,
+      kanban,
+    };
+
+    // console.log(payload, "data masuk");
+
+    // try {
     const newDataCustomer = new Tes(payload);
     const savedData = await newDataCustomer.save();
     // res.status(201).json({ success: true, data: newDataCustomer });
@@ -171,6 +494,7 @@ export const createData = async (req, res) => {
       //       parseInt(dataItem.delivery_cycle) === 1) &&
       //     matchedStep !== undefined
       // )
+
       for (const [stepKey, processName] of Object.entries(defaultSteps)) {
         const matchedItem = tracking.find(
           (item) =>
@@ -195,10 +519,8 @@ export const createData = async (req, res) => {
 
     for (const data of result) {
       const { cycle, dnNumber, waktu, durasi, step, waktuDelv } = data;
-      // try {
-      // Menggunakan await untuk menunggu hingga data berhasil dimasukkan
 
-      console.log(data, "data tracking");
+      console.log(data, "data tracking", cycle);
       let waktuAktual = null;
       let delay = null;
       let status = "-";
@@ -210,6 +532,7 @@ export const createData = async (req, res) => {
         moment.utc(waktu).format("YYYY-MM-DD HH:mm"),
         "Asia/Jakarta"
       );
+      // console.log(waktu, "ini valid ga", waktuAktualUTC);
       // .utc();
       const waktuNow = moment().tz("Asia/Jakarta");
 
@@ -419,15 +742,85 @@ export const updateData = async (req, res) => {
     };
 
     if (kolomSelected) {
-      updateData.$push = {
-        kolomSelected: kolomSelected,
+      // if (selectedData && Array.isArray(selectedData)) {
+      //   updateData.$addToSet = { selectedData: { $each: selectedData } };
+      // }
+      console.log(kolomSelected, "conoth");
+
+      const customerMaterials = kolomSelected.data
+        .map((d) => d.customer_material)
+        .filter(Boolean);
+
+      const materials = kolomSelected.data
+        .map((d) => d.material)
+        .filter(Boolean);
+
+      const materialData = await materialCustomer.find({
+        $or: [
+          { customer_material: { $in: customerMaterials } },
+          { material: { $in: materials } },
+        ],
+      });
+
+      console.log(materialData[0]);
+      if (!materialData) {
+        return res.status(404).json({ message: "Material tidak ditemukan" });
+      }
+
+      const updatedKolomSelected = kolomSelected.data.map((dataItem) => {
+        // const matchingMaterial = materialData.find(
+        //   (m) => m.customer_material === dataItem.customer_material
+        // );
+        const matchingMaterial = materialData.find((m) => {
+          if (dataItem.customer_material) {
+            return m.customer_material === dataItem.customer_material;
+          } else if (dataItem.material) {
+            if (dataItem.customer) {
+              return (
+                m.material === dataItem.material &&
+                m.customer === dataItem.customer
+              );
+            } else {
+              return m.material === dataItem.material;
+            }
+          }
+        });
+
+        console.log(matchingMaterial, "ini cocok");
+        return {
+          ...dataItem,
+          material: dataItem?.material
+            ? dataItem.material
+            : matchingMaterial?.material || "",
+          material_description: dataItem?.description
+            ? dataItem.description
+            : matchingMaterial?.material_description || "",
+          customer_material_description: dataItem.customer_material_description
+            ? dataItem.customer_material_description
+            : matchingMaterial?.customer_material_description || "",
+          customer_material: dataItem.customer_material
+            ? dataItem.customer_material
+            : matchingMaterial?.customer_material || "",
+
+          line: matchingMaterial?.line,
+          customer: matchingMaterial?.customer_description,
+        };
+      });
+
+      const newKolom = {
+        ...kolomSelected,
+        data: updatedKolomSelected,
       };
+
+      updateData.$push = {
+        kolomSelected: newKolom,
+      };
+      // updateData.$push = {
+      //   kolomSelected: {
+      //     $each: updatedKolomSelected,
+      //   },
+      // };
     }
-
-    // if (selectedData && Array.isArray(selectedData)) {
-    //   updateData.$addToSet = { selectedData: { $each: selectedData } };
-    // }
-
     const updated = await Tes.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true,
@@ -453,6 +846,7 @@ export const updateData = async (req, res) => {
         //   moment.utc(waktuDelv),
         //   moment(waktuDelv)
         // );
+        console.log(waktuDelv, "waktu delv");
         if (!waktuDelv) {
           const currentKolomIndex = updated.kolomSelected.indexOf(kolom);
           const currentDataIndex = kolom.data.indexOf(dataItem);
@@ -491,21 +885,21 @@ export const updateData = async (req, res) => {
         //   .tz(waktuDelv, "Asia/Jakarta")
         //   .add(7, "hours");
 
-        const numberCycle = dataItem.delivery_cycle
-          ? dataItem.delivery_cycle
-          : 1;
+        const numberCycle = dataItem.delivery_cycle;
+
         // console.log(waktuDelv, waktuAktualUTC, "WAKTU ASLI");
         const dnNumber = dataItem.dn_number;
         const uniqueKey = `${dnNumber}-${numberCycle}`;
         if (globalProcessedDnNumbers.has(uniqueKey)) continue;
         globalProcessedDnNumbers.set(uniqueKey, true);
 
+        // console.log(globalProcessedDnNumbers, "dn");
         // console.log(updated, matchedCycle, "data update");
         // const matchedCycle = updated.cycle.find(
         //   (c) => c.numberCycle === numberCycle
         // );
         const matchedCycleForNumber = matchedCycle.filter(
-          (c) => c.cycle === numberCycle
+          (c) => Number(c.cycle) === Number(numberCycle)
         );
 
         if (!matchedCycleForNumber) continue;
@@ -673,9 +1067,18 @@ export const updateData = async (req, res) => {
 
     const allTrackings = await trackingDelv.find({ customerId: id });
 
-    res
-      .status(200)
-      .json({ success: true, message: "Data updated success", data: updated });
+    // console.log(trackingUpdates);
+    // if (trackingUpdates.length > 0) {
+    res.status(200).json({
+      success: true,
+      message: "Data updated success",
+      data: updated,
+    });
+    // } else {
+    //   res
+    //     .status(200)
+    //     .json({ success: false, message: "Data tidak berhasil diperbarui!" });
+    // }
   } catch (error) {
     console.error("Update Error:", error);
     res
@@ -1068,7 +1471,7 @@ export const getDataByName = async (req, res) => {
     if (!namaCust) {
       return res.status(400).json({
         success: false,
-        message: "Username is required",
+        message: "Full Name is required",
       });
     }
 
@@ -1126,7 +1529,7 @@ export const getDataByName = async (req, res) => {
       data,
     });
   } catch (error) {
-    console.error("Error in fetching data by username:", error.message);
+    console.error("Error in fetching data by fullname:", error.message);
     res.status(500).json({
       success: false,
       message: "Server Error",

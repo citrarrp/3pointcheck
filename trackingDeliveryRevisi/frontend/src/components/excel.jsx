@@ -425,7 +425,7 @@ function Excel() {
           ];
 
           const mappedPartNo = excelData.map(
-            (item) => item[mapping["part_no"]]
+            (item) => item[mapping["part_no"]] || item[mapping["material"]]
           );
 
           const uniquePartName = [

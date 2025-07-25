@@ -33,6 +33,13 @@ const scanQRSchema = new mongoose.Schema({
     type: Date,
     default: undefined,
   },
+  validPart: {
+    type: String,
+    default: undefined,
+  },
+  pesan: {
+    type: String,
+  },
 });
 
 const scanQR = mongoose.model("scanQR", scanQRSchema, "scanQR");

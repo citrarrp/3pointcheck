@@ -7,9 +7,9 @@ import { MdMenuOpen } from "react-icons/md";
 import { AuthContext } from "../context/auth";
 import { SidebarContext } from "../context/sidebar-context";
 import { IoLogOutOutline } from "react-icons/io5";
+import { GiHamburgerMenu } from "react-icons/gi";
 
 export default function Sidebar() {
-  const { isOpen } = useContext(SidebarContext);
   const { logout } = useContext(AuthContext);
 
   const handleClick = async (e) => {
@@ -44,17 +44,24 @@ export default function Sidebar() {
               to="/"
               className="mb-6 flex items-center align-middle pt-10 px-2.5 "
             >
-              <h1 className="text-[#105bdf] text-[21px]">
+              <h1 className="text-[#105bdf] text-[15px]">
                 <b>e-Delivery System</b>
               </h1>
+              <button
+                onClick={() => setIsOpen(!isOpen)}
+                type="button"
+                className="p-4 rounded-full text-sm text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-gray-200"
+              >
+                <GiHamburgerMenu size={22} />
+              </button>
             </NavLink>
             <ul>
               <SideBarLink />
             </ul>
           </div>
-          <div className="text-center">
+          <div className="text-center mt-auto">
             <button
-              className="cursor-pointer text-sm bg-[#2c64c7] w-fit px-3 py-1 rounded text-white absolute bottom-10 left-2/7"
+              className="cursor-pointer text-sm bg-[#2c64c7] w-fit p-3 rounded text-white"
               onClick={handleClick}
             >
               <div className="flex flex-row items-center gap-2">

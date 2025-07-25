@@ -115,7 +115,6 @@ export default function Home() {
       group.statuses.push(item?.status || null);
     });
 
-
     return Array.from(uniqueMap.values());
   }, [dataTracking, selectedDate]);
 
@@ -144,6 +143,7 @@ export default function Home() {
         ? Math.round(group.totalPercentage / group.count)
         : 0;
 
+    console.log(group.waktu, "waktu tampul");
     return {
       customer: group.customer,
       cycle: group.cycle,
@@ -193,7 +193,7 @@ export default function Home() {
           <h1 className={`font-bold ${isOpen ? "text-lg" : "text-4xl"} my-10`}>
             Timeline Keberangkatan Truk
           </h1>
-          <button
+          {/* <button
             onClick={() => setIsOpen(!isOpen)}
             type="button"
             className="p-4 rounded-full text-sm text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-gray-200"
@@ -201,7 +201,7 @@ export default function Home() {
             <FaDisplay
               className={`${isOpen ? "w-5 h-5" : "w-7 h-7"} mx-auto`}
             />
-          </button>
+          </button> */}
         </div>
         <RealtimeTimer />
       </div>

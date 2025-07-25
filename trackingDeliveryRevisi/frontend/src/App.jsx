@@ -41,7 +41,7 @@ function App() {
           />
 
           <Route path="/" element={<MainLayout />}>
-            <Route path="/" element={<Home />} />
+            <Route path="/dashboard-delv" element={<Home />} />  
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/label" element={<Label />} />
             <Route path="/printLabel" element={<LabelPage />} />

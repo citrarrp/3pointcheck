@@ -7,19 +7,19 @@ import { FaLock, FaUser, FaEye, FaEyeSlash, FaKey } from "react-icons/fa";
 // import { IoArrowBackCircle } from "react-icons/io5";
 
 const userSchema = z.object({
-  username: z.string().min(5, { message: "Username minimal 5 karakter" }),
+  fullname: z.string().min(5, { message: "fullname minimal 5 karakter" }),
   password: z.string().min(6, { message: "Password minimal 6 karakter" }),
   roles: z.string().default("user"),
 });
 
 const Register = ({ onRegister }) => {
-  // const [username, setEmail] = useState("");
+  // const [fullname, setEmail] = useState("");
   // const [password, setPassword] = useState("");
   // const [role, setRole] = useState("user");
 
   const [showPassword, setShowPassword] = useState(false);
   // const [formData, setFormData] = useState({
-  //   username: "",
+  //   fullname: "",
   //   password: "",
   //   roles: "user",
   // });
@@ -32,7 +32,7 @@ const Register = ({ onRegister }) => {
   } = useForm({
     resolver: zodResolver(userSchema),
     defaultValues: {
-      username: "",
+      fullname: "",
       password: "",
       roles: "user",
     },
@@ -47,7 +47,7 @@ const Register = ({ onRegister }) => {
     if (result.success) reset();
     // try {
     //   await api.post("/user/auth/register", {
-    //     username,
+    //     fullname,
     //     password,
     //     roles: role,
     //   });
@@ -71,13 +71,13 @@ const Register = ({ onRegister }) => {
           </span>
           <input
             type="text"
-            placeholder="Username"
+            placeholder="fullname"
             className="w-full pl-10 pr-4 py-2 border border-gray-300 focus:border-gray-500 focus:ring-2 focus:ring-gray-400 rounded-lg outline-none"
-            {...register("username")}
+            {...register("fullname")}
           />
-          {errors.username && (
+          {errors.fullname && (
             <p className="text-red-500 text-sm mt-1">
-              {errors.username.message}
+              {errors.fullname.message}
             </p>
           )}
         </div>
@@ -109,11 +109,11 @@ const Register = ({ onRegister }) => {
           </div>
         </div>
         {/* <input
-          type="username"
-          placeholder="Username"
+          type="fullname"
+          placeholder="fullname"
           className="mb-2 p-2 w-full border"
-          value={formData.username}
-          {...register("username", { required: "Username wajib diisi" })}
+          value={formData.fullname}
+          {...register("fullname", { required: "fullname wajib diisi" })}
           onChange={(e) => setFo(e.target.value)}
         /> */}
         {/* <input

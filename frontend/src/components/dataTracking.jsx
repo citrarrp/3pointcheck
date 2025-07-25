@@ -305,6 +305,42 @@ export default function DataTrackingTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const { customerId, cycleNumber } = useParams();
   const [processes, setProcesses] = useState({});
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+
+  const openEditModal = (item) => {
+    setEditingItem(item);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingItem(null);
+  };
+
+  const handleSave = async (updatedItem) => {
+    console.log(updatedItem, "ada id");
+    try {
+      await api.put(`/track/keterangan/${updatedItem._id}`, {
+        nama: updatedItem.nama,
+        ket: updatedItem.ket,
+      });
+
+      setDataCust((prev) =>
+        prev.map((item) =>
+          item._id === updatedItem._id
+            ? { ...item, ket: updatedItem.ket }
+            : item
+        )
+      );
+
+      closeModal();
+    } catch (error) {
+      console.error("Gagal update keterangan:", error);
+    }
+  };
+
   // const handleCheckboxChange = (e) => {
   // if (e.target.checked) {
   //   const now = new Date();
@@ -393,28 +429,88 @@ export default function DataTrackingTable() {
     }));
   }
 
-  const handleCheckboxChange = (proses, dn, item) => (e) => {
-    const isChecked = e.target.checked || (item.waktuAktual ? true : false);
-    const now = new Date();
-    const formattedTime = now.toLocaleTimeString("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
+  // const handleCheckboxChange = (proses, dn, item) => (e) => {
+  //   const isChecked = e.target.checked || (item.waktuAktual ? true : false);
+  //   const now = new Date();
+  //   const formattedTime = now.toLocaleTimeString("en-GB", {
+  //     hour: "2-digit",
+  //     minute: "2-digit",
+  //     hour12: false,
+  //   });
 
-    const key = `${proses}-${dn}`;
+  //   const key = `${proses}-${dn}`;
+  //   setProcesses((prev) => ({
+  //     ...prev,
+  //     [key]: {
+  //       checked: true,
+  //       ...prev[key],
+  //       time: isChecked ? formattedTime : "",
+  //       delay: "",
+  //       status: "",
+  //     },
+  //   }));
+
+  //   getDelay(item, proses, dn, isChecked, formattedTime);
+  // };
+
+  const handleCheckboxChange = (prosesName, dnNumber, item) => async (e) => {
+    const isChecked = e.target.checked;
+    const key = `${prosesName}-${dnNumber}`;
+
+    if (item?.waktuAktual) return;
+
+    if (isChecked) {
+      const formattedTime = moment().format("YYYY-MM-DD HH:mm:ss");
+      const waktuStandar = moment(item.waktuStandar);
+      const waktuAktual = moment(formattedTime);
+      const diffMinutes = waktuAktual.diff(waktuStandar, "minutes");
+
+      let delayText = "";
+      let status = "";
+
+      if (diffMinutes > 0) {
+        delayText = `-${diffMinutes} menit`;
+        status = "Delay";
+      } else if (diffMinutes < 0) {
+        delayText = `+${Math.abs(diffMinutes)} menit`;
+        status = "Advanced";
+      } else {
+        delayText = "0 menit";
+        status = "On Time";
+      }
+
+      setProcesses((prev) => ({
+        ...prev,
+        [key]: {
+          checked: true,
+          ...prev[key],
+          time: moment().format("HH:mm"),
+          delay: delayText,
+          status: status,
+        },
+      }));
+
+      try {
+        await api.post("/track/check", {
+          id: item._id,
+          dn: dnNumber,
+          proses: prosesName,
+          waktuAktual: formattedTime,
+          // delay: delayText,
+          // status: status,
+        });
+      } catch (err) {
+        console.error("Gagal kirim ke /track:", err);
+      }
+    }
+
     setProcesses((prev) => ({
       ...prev,
       [key]: {
-        checked: true,
         ...prev[key],
-        time: isChecked ? formattedTime : "",
-        delay: "",
-        status: "",
+        checked: isChecked,
       },
     }));
-
-    getDelay(item, proses, dn, isChecked, formattedTime);
   };
 
   const proses = [
@@ -623,6 +719,7 @@ export default function DataTrackingTable() {
                                 processes[`${prosesName}-${dnNumber}`]
                                   ?.checked || item?.waktuAktual
                               }
+                              // disabled={!!item?.waktuAktual}
                               onChange={handleCheckboxChange(
                                 prosesName,
                                 dnNumber,
@@ -676,9 +773,44 @@ export default function DataTrackingTable() {
                                 : item?.status}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-500">
-                            {item?.ket || "-"}
+                          {/* <td className="px-4 py-3 text-sm text-gray-500">
+                            {item?.ket || "-"} */}
+
+                          <td className="px-4 py-3">
+                            <div className="flex items-center group">
+                              <span
+                                className={`text-sm ${
+                                  item?.ket === "-"
+                                    ? "text-gray-400 italic"
+                                    : "text-gray-600"
+                                }`}
+                              >
+                                {item?.ket === "-"
+                                  ? "Tidak ada keterangan"
+                                  : item.ket}
+                              </span>
+                              <button
+                                onClick={() => openEditModal(item)}
+                                className="ml-2 text-blue-500 hover:text-blue-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-4 w-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                  />
+                                </svg>
+                              </button>
+                            </div>
                           </td>
+                          {/* </td> */}
                         </tr>
                       );
                     })}
@@ -687,6 +819,46 @@ export default function DataTrackingTable() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity">
+          <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold text-gray-800">
+                Edit Keterangan
+              </h2>
+              <p className="text-sm text-gray-500">
+                Update the description below
+              </p>
+            </div>
+
+            <textarea
+              className="w-full border border-gray-300 rounded-lg p-3 mb-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              rows={4}
+              placeholder="Masukkan keterangan..."
+              value={editingItem?.ket || ""}
+              onChange={(e) =>
+                setEditingItem({ ...editingItem, ket: e.target.value })
+              }
+            />
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={closeModal}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => handleSave(editingItem)}
+                className="px-4 py-2 text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors shadow-md"
+              >
+                Simpan Perubahan
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

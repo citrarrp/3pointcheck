@@ -4,7 +4,7 @@ import trackingDelv from "../models/tracking.js";
 import crypto from "crypto";
 import moment from "moment-timezone";
 
-export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
+export const updatePrepareDatabyDNCustCycle = async (req, res) => {
   try {
     const {
       customerId,
@@ -14,17 +14,20 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
       status,
       shift,
       sudahAll,
+      qty,
     } = req.body;
 
-    // console.log(
-    //   customerId,
-    //   tanggal,
-    //   dnNumber,
-    //   persentase,
-    //   status,
-    //   shift,
-    //   "request"
-    // );
+    console.log(
+      customerId,
+      tanggal,
+      dnNumber,
+      persentase,
+      status,
+      shift,
+      qty,
+      "jumlah",
+      "request"
+    );
     if (!customerId || !tanggal || !dnNumber) {
       return res.status(400).json({
         message: "customerId, tanggal, dan dnNumber harus diisi",
@@ -44,7 +47,7 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
         $lt: endOfDay,
       },
       dnNumber,
-      nama: "Finish Preparation",
+      nama: "Inspection",
     });
 
     if (!existingData) {
@@ -53,6 +56,14 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
         suggestion: "Buat data terlebih dahulu sebelum melakukan update",
       });
     }
+
+    const lastWord = (str) => {
+      if (!str) return "";
+      const parts = str.trim().split(/\s+/); // split by 1+ spasi
+      return parts[parts.length - 1]; // ambil terakhir
+    };
+
+    let verificationCode = null;
 
     // Hitung waktu aktual dan delay
     // console.log(existingData, typeof existingData.waktuStandar, "wakti");
@@ -74,7 +85,6 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
     // console.log(waktuAktual, waktuStandar, diffMinutes);
 
     let statusWaktu = existingData.status;
-    let verificationCode = null;
 
     if (status === "done" || status === "first") {
       if (diffMinutes > 15) statusWaktu = "Delay";
@@ -108,6 +118,8 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
       verificationCode = `${expectedHash}:${randomString}`;
     }
 
+    // const verificationCode = status === "done" ? dnNumber : null;
+
     const updateData = {
       persentase,
       status: statusWaktu,
@@ -118,6 +130,7 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
           : `-${diffMinutes} menit`
         : null,
       updatedAt: moment().tz("Asia/Jakarta").toDate(),
+      qty,
     };
 
     await trackingDelv.findOneAndUpdate(
@@ -130,7 +143,7 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
         dnNumber,
         nama:
           status === "done"
-            ? "Finish Preparation"
+            ? "Inspection"
             : { $in: ["Start Preparation", "Start Preparation (Pulling)"] },
         $or: [
           { verificationCode: null },
@@ -151,7 +164,7 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
             $gte: startOfDay,
             $lt: endOfDay,
           },
-          nama: "Finish Preparation",
+          nama: "Inspection",
           dnNumber,
           $or: [
             { verificationCode: null },
@@ -164,7 +177,28 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
       );
     }
 
-    if (verificationCode && status == "done") {
+    if (status === "-") {
+      await trackingDelv.updateMany(
+        {
+          customerId,
+          tanggal: {
+            $gte: startOfDay,
+            $lt: endOfDay,
+          },
+          nama: {
+            $in: [
+              "Finish Preparation",
+              "Start Preparation",
+              "Start Preparation (Pulling)",
+            ],
+          },
+          dnNumber,
+        },
+        { $set: { qty } }
+      );
+    }
+
+    if (status == "done" && sudahAll) {
       await trackingDelv.findOneAndUpdate(
         {
           customerId,
@@ -173,7 +207,7 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
             $lt: endOfDay,
           },
           dnNumber,
-          nama: "Finish Preparation",
+          nama: "Inspection",
           $or: [
             { verificationCode: null },
             { verificationCode: { $exists: false } },
@@ -184,11 +218,12 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
         {
           $set: {
             verificationCode: verificationCode,
-            shift: sudahAll ? shift : null,
-            persentase,
+            shift,
+            persentase: Math.min(persentase || 0, 100),
           },
         }
       );
+      console.log("berhasil");
     }
 
     const response = {
@@ -204,22 +239,24 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
         $lt: endOfDay,
       },
       dnNumber,
-      nama: "Finish Preparation",
+      nama: "Inspection",
       verificationCode: { $ne: null },
-      // shift: { $ne: null },
+      shift: { $ne: null },
       waktuAktual: { $ne: null },
     });
+
     if (existing) {
+      console.log("input deh");
       response.waktuAktual = existing.waktuAktual;
       response.shift = existing.shift;
       response.verificationCode = existing.verificationCode;
     } else {
-      console.log("Verification code", verificationCode, dnNumber);
+      // console.log("Verification code", verificationCode, dnNumber);
       response.verificationCode = null;
+      console.log("dn", dnNumber);
     }
     // }
-
-    res.status(200).json(response);
+    return res.status(200).json(response);
   } catch (error) {
     console.error("Error updating tracking data:", error);
     res.status(500).json({
@@ -229,11 +266,11 @@ export const updateFinishPrepareDatabyDNCustCycle = async (req, res) => {
   }
 };
 
-export const postFinishPreparation = async (req, res) => {
+export const postInspection = async (req, res) => {
   try {
-    const { customerId, tanggal, code, dnNumber } = req.body;
+    const { customerId, tanggal, codeOD, dnNumber } = req.body;
 
-    if (!code) {
+    if (!codeOD) {
       return res.status(400).json({
         message: "QR tidak memiliki isi",
       });
@@ -252,7 +289,7 @@ export const postFinishPreparation = async (req, res) => {
         $lt: endOfDay,
       },
       dnNumber,
-      nama: "Ready to Shipping Area",
+      nama: "Inspection",
     });
 
     if (!existingData) {
@@ -269,9 +306,9 @@ export const postFinishPreparation = async (req, res) => {
           $lt: endOfDay,
         },
         dnNumber,
-        nama: "Ready to Shipping Area",
+        nama: "Finish Preparation",
       },
-      { $set: { verificationCode: code } },
+      { $set: { verificationCode: codeOD } },
       { new: true }
     );
     res.status(200).json({ messsage: "Data berhasil diperbarui!" });
@@ -284,12 +321,12 @@ export const postFinishPreparation = async (req, res) => {
   }
 };
 
-export const postReadyToShipping = async (req, res) => {
+export const postFinishPreparation = async (req, res) => {
   const { code } = req.body;
   try {
     const existingData = await trackingDelv
       .find({
-        nama: "Ready to Shipping Area",
+        nama: "Finish Preparation",
         verificationCode: code,
       })
       .populate("customerId", "nama")
@@ -384,7 +421,7 @@ export const getDatabyIdCycle = async (req, res) => {
   const targetDate = moment.tz(tanggal, "Asia/Jakarta").startOf("day");
   const nextDay = moment(targetDate).add(1, "day");
 
-  console.log(tanggal, targetDate, nextDay);
+  console.log(tanggal, targetDate, nextDay, cycleNumber);
   try {
     const trackingCustDN = await trackingDelv.find({
       customerId: id,
@@ -554,4 +591,357 @@ export const getDataTracking = async (req, res) => {
     console.log("error in fetching Customers:", error.message);
     res.status(500).json({ success: false, message: "Server Error" });
   }
+};
+
+export const updateKeterangan = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nama, ket } = req.body;
+
+    if (!id || !nama || !ket) {
+      return res.status(400).json({ message: "id, nama, dan ket wajib diisi" });
+    }
+
+    const updated = await trackingDelv.findOneAndUpdate(
+      { _id: id, nama }, // cari berdasarkan id dan nama
+      { ket }, // update hanya keterangan
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Data tidak ditemukan" });
+    }
+
+    return res
+      .status(200)
+      .json({ message: "Berhasil update keterangan", data: updated });
+  } catch (error) {
+    console.error("Gagal update keterangan:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const postChecking = async (req, res) => {
+  try {
+    const { proses, dn, waktuAktual, id } = req.body;
+
+    if (!proses || !dn || !waktuAktual) {
+      return res.status(400).json({ message: "Data tidak lengkap" });
+    }
+
+    let existing = await trackingDelv.findOne({
+      _id: id,
+      nama: proses,
+      dnNumber: dn,
+    });
+
+    if (existing && existing.waktuAktual) {
+      return res.status(200).json({
+        message: "Sudah tercatat, tidak diubah lagi",
+        data: existing,
+      });
+    }
+
+    const waktuStandar = existing?.waktuStandar;
+    if (!waktuStandar) {
+      return res.status(400).json({ message: "Waktu standar tidak ditemukan" });
+    }
+
+    const waktuStandarMoment = moment(waktuStandar);
+    const waktuAktualMoment = moment(waktuAktual);
+    const diffMinutes = waktuAktualMoment.diff(waktuStandarMoment, "minutes");
+
+    let status, delayText;
+
+    if (diffMinutes > 0) {
+      status = "Delay";
+      delayText = `-${diffMinutes} menit`;
+    } else if (diffMinutes < 0) {
+      status = "Advanced";
+      delayText = `+${Math.abs(diffMinutes)} menit`;
+    } else {
+      status = "On Time";
+      delayText = `0 menit`;
+    }
+
+    if (!existing) {
+      existing = new trackingDelv({
+        proses,
+        dn,
+        waktuStandar,
+        waktuAktual,
+        delay: delayText,
+        status,
+      });
+    } else {
+      existing.waktuAktual = waktuAktual;
+      existing.delay = delayText;
+      existing.status = status;
+    }
+
+    await existing.save();
+
+    res.status(200).json({
+      message: "Data berhasil dicatat",
+      data: existing,
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+
+export const generateOrGetVerification = async (req, res) => {
+  try {
+    const { customerId, cycle, tanggal, shift } = req.body;
+    const waktuAktual = moment().tz("Asia/Jakarta");
+
+    const startOfDay = moment
+      .tz(tanggal, "Asia/Jakarta")
+      .startOf("day")
+      .toDate();
+    const endOfDay = moment.tz(tanggal, "Asia/Jakarta").endOf("day").toDate();
+    const existing = await trackingDelv.findOne({
+      customerId,
+      cycleNumber: cycle,
+      tanggal: {
+        $gte: startOfDay,
+        $lt: endOfDay,
+      },
+      nama: "Inspection",
+      verificationCode: { $exists: true },
+    });
+
+    let delay = 0;
+    let statusWaktu = "On Time";
+
+    if (existing?.waktuStandar) {
+      const waktuStandar = moment(new Date(existing.waktuStandar)).tz(
+        "Asia/Jakarta"
+      );
+      const diffMinutes = moment(waktuAktual).diff(waktuStandar, "minutes");
+      delay = diffMinutes;
+
+      if (diffMinutes > 15) statusWaktu = "Delay";
+      else if (diffMinutes < -15) statusWaktu = "Advanced";
+    }
+
+    const payload = {
+      customerId,
+      cycle,
+      tanggal: moment.tz(tanggal, "Asia/Jakarta").toDate(),
+      timestamp: new Date().toISOString(),
+    };
+
+    const payloadString = JSON.stringify(payload);
+    const serverSecret = process.env.QR_SECRET;
+
+    const randomString = crypto
+      .randomBytes(16)
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=/g, "")
+      .slice(0, 16);
+
+    const expectedHash = crypto
+      .createHmac("sha512", serverSecret)
+      .update(payloadString)
+      .digest("hex");
+
+    const verificationCode = `${expectedHash}:${randomString}`;
+
+    const baseQuery = {
+      customerId,
+      tanggal: { $gte: startOfDay, $lt: endOfDay },
+      cycleNumber: cycle,
+      $or: [
+        { verificationCode: null },
+        { verificationCode: { $exists: false } },
+      ],
+    };
+
+    // Update "Inspection"
+    const updateInspectionResult = await trackingDelv.updateMany(
+      { ...baseQuery, nama: "Inspection" },
+      {
+        $set: {
+          verificationCode,
+          shift,
+          waktuAktual,
+          delay,
+          status: statusWaktu,
+        },
+      }
+    );
+
+    const updateFinishPrepResult = await trackingDelv.updateMany(
+      { ...baseQuery, nama: "Finish Preparation" },
+      {
+        $set: {
+          verificationCode,
+          shift,
+        },
+      }
+    );
+
+    return res.status(200).json({
+      message: existing ? "Kode sudah ada!" : "Kode ter-generate!",
+      verificationCode,
+      shift,
+      waktuAktual,
+      updateResults: {
+        inspection: updateInspectionResult.modifiedCount,
+        finishPreparation: updateFinishPrepResult.modifiedCount,
+      },
+    });
+  } catch (error) {
+    console.error("Verification error:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+
+  //   try {
+  //     const { customerId, tanggal, cycle, shift } = req.body;
+
+  //     if (!customerId || !tanggal || !cycle || !shift) {
+  //       return res.status(400).json({
+  //         message: "customerId, tanggal, cycle, dan shift harus diisi",
+  //       });
+  //     }
+
+  //     const waktuAktual = moment().tz("Asia/Jakarta");
+
+  //     const startOfDay = moment
+  //       .tz(tanggal, "Asia/Jakarta")
+  //       .startOf("day")
+  //       .toDate();
+  //     const endOfDay = moment.tz(tanggal, "Asia/Jakarta").endOf("day").toDate();
+
+  //     // const existing = await trackingDelv.findOne({
+  //     //   customerId,
+  //     //   tanggal: { $gte: startOfDay, $lt: endOfDay },
+  //     //   cycleNumber: cycle,
+  //     //   nama: "Inspection",
+  //     //   verificationCode: { $ne: null },
+  //     // });
+
+  //     // if (existing) {
+  //     //   return res.status(200).json({
+  //     //     message: "Verification sudah ada",
+  //     //     verificationCode: existing.verificationCode,
+  //     //     shift: existing.shift || null,
+  //     //     waktuAktual: existing.waktuAktual || null,
+  //     //   });
+  //     // }
+
+  //     const existing = await trackingDelv.findOne({
+  //       customerId,
+  //       tanggal: { $gte: startOfDay, $lt: endOfDay },
+  //       cycleNumber: cycle,
+  //       nama: "Inspection",
+  //       verificationCode: { $ne: null },
+  //     });
+
+  //     if (existing && existing.waktuStandar) {
+  //       const waktuStandar = moment(new Date(existing.waktuStandar)).tz(
+  //         "Asia/Jakarta"
+  //       );
+
+  //       const diffMinutes = waktuAktual.diff(waktuStandar, "minutes");
+  //       delay = diffMinutes;
+
+  //       let statusWaktu = existing.status;
+
+  //       if (diffMinutes > 15) statusWaktu = "Delay";
+  //       else if (diffMinutes < -15) statusWaktu = "Advanced";
+  //       else statusWaktu = "On Time";
+  //     }
+
+  //     if (existing) {
+  //       return res.status(200).json({
+  //         message: "Verification sudah ada",
+  //         verificationCode: existing.verificationCode,
+  //         shift: existing.shift || null,
+  //         waktuAktual: existing.waktuAktual || null,
+  //       });
+  //     }
+
+  //     const payload = {
+  //       customerId,
+  //       cycle,
+  //       tanggal: moment.tz(tanggal, "Asia/Jakarta").toDate(),
+  //       timestamp: new Date().toISOString(),
+  //     };
+
+  //     const payloadString = JSON.stringify(payload);
+  //     const serverSecret = process.env.QR_SECRET;
+
+  //     const randomString = crypto
+  //       .randomBytes(16)
+  //       .toString("base64")
+  //       .replace(/\+/g, "-")
+  //       .replace(/\//g, "_")
+  //       .replace(/=/g, "")
+  //       .slice(0, 16); // t
+
+  //     const expectedHash = crypto
+  //       .createHmac("sha512", serverSecret)
+  //       .update(payloadString)
+  //       .digest("hex");
+
+  //     const verificationCode = `${expectedHash}:${randomString}`;
+
+  //     await trackingDelv.updateMany(
+  //       {
+  //         customerId,
+  //         tanggal: { $gte: startOfDay, $lt: endOfDay },
+  //         cycleNumber: cycle,
+  //         nama: "Inspection",
+  //         $or: [
+  //           { verificationCode: null },
+  //           { verificationCode: { $exists: false } },
+  //         ],
+  //       },
+  //       {
+  //         $set: {
+  //           verificationCode,
+  //           shift,
+  //           waktuAktual,
+  //           delay,
+  //           status,
+  //         },
+  //       }
+  //     );
+  //     await trackingDelv.updateMany(
+  //       {
+  //         customerId,
+  //         tanggal: { $gte: startOfDay, $lt: endOfDay },
+  //         cycleNumber: cycle,
+  //         nama: "Finish Preparation",
+  //         $or: [
+  //           { verificationCode: null },
+  //           { verificationCode: { $exists: false } },
+  //         ],
+  //       },
+  //       {
+  //         $set: {
+  //           verificationCode,
+  //           shift,
+  //         },
+  //       }
+  //     );
+
+  //     return res.status(200).json({
+  //       message: "Verification berhasil dibuat",
+  //       verificationCode,
+  //       shift,
+  //       waktuAktual,
+  //     });
+  //   } catch (error) {
+  //     console.error("Gagal generate verification:", error);
+  //     return res.status(500).json({
+  //       message: "Terjadi kesalahan server",
+  //       error: error.message,
+  //     });
+  //   }
 };

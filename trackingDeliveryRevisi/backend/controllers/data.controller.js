@@ -1068,7 +1068,7 @@ export const getDataByName = async (req, res) => {
     if (!namaCust) {
       return res.status(400).json({
         success: false,
-        message: "Username is required",
+        message: "fullname is required",
       });
     }
 
@@ -1126,7 +1126,7 @@ export const getDataByName = async (req, res) => {
       data,
     });
   } catch (error) {
-    console.error("Error in fetching data by username:", error.message);
+    console.error("Error in fetching data by fullname:", error.message);
     res.status(500).json({
       success: false,
       message: "Server Error",

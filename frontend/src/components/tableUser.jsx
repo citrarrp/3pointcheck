@@ -97,13 +97,20 @@ export default function TableUser({ users, onDeleteUser, loading, error }) {
                     scope="col"
                     className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
-                    Username
+                    NPK
                   </th>
                   <th
                     scope="col"
                     className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
-                    Roles
+                    Full Name
+                  </th>
+
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Position
                   </th>
                   <th
                     scope="col"
@@ -123,7 +130,16 @@ export default function TableUser({ users, onDeleteUser, loading, error }) {
                       <div className="flex items-center">
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
-                            {item.username}
+                            {item.npk}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {item.fullname}
                           </div>
                         </div>
                       </div>
@@ -132,14 +148,15 @@ export default function TableUser({ users, onDeleteUser, loading, error }) {
                       <span
                         className={`ml-3 px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-lg 
                             ${
-                              item.roles.includes("admin")
+                              item.position.includes("admin") ||
+                              item.position.includes("leader")
                                 ? "bg-purple-300 text-purple-800"
-                                : item.roles.includes("production")
+                                : item.position.includes("operator")
                                 ? "bg-blue-300 text-blue-800"
                                 : "bg-green-300 text-green-800"
                             }`}
                       >
-                        {item.roles}
+                        {item.position}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium place-items-center">

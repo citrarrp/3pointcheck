@@ -13,7 +13,7 @@ export default function MainLayout() {
   return user ? (
     <>
       <Sidebar />
-      <main className={`${isOpen ? "ml-64" : "mx-10"} p-4 mt-6`}>
+      <main className={`${isOpen ? "ml-64" : "ml-20"} p-4 mt-6`}>
         <Outlet />
       </main>
     </>

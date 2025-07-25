@@ -21,6 +21,8 @@ export default function RegisterPage() {
     }
   };
 
+  
+
   const handleRegister = async (userData) => {
     try {
       const data = await api.post("/user/auth/register", userData);

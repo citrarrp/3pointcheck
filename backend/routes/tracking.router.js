@@ -1,12 +1,15 @@
 import express from "express";
 import {
+  generateOrGetVerification,
   getCycleDatabyId,
   getDatabyIdCycle,
   getDatabyIdCycleDN,
   getDataTracking,
+  postChecking,
   postFinishPreparation,
-  postReadyToShipping,
-  updateFinishPrepareDatabyDNCustCycle,
+  postInspection,
+  updateKeterangan,
+  updatePrepareDatabyDNCustCycle,
 } from "../controllers/tracking.controller.js";
 
 const router = express.Router();
@@ -14,8 +17,11 @@ const router = express.Router();
 router.get("/:id/:cycleNumber", getDatabyIdCycle);
 router.get("/:id/:cycleNumber/:dn_number", getDatabyIdCycleDN);
 router.get("/", getDataTracking);
-router.put("/", updateFinishPrepareDatabyDNCustCycle);
-router.put("/finish", postFinishPreparation);
-router.put("/ready", postReadyToShipping);
+router.put("/", updatePrepareDatabyDNCustCycle);
+router.put("/finish", postInspection);
+router.post("/check", postChecking);
+router.post("/getCode", generateOrGetVerification);
+router.put("/keterangan/:id", updateKeterangan);
+router.put("/ready", postFinishPreparation);
 router.get("/:id", getCycleDatabyId);
 export default router;
