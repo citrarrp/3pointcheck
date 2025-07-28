@@ -102,7 +102,7 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
 
   const handlePrint = async () => {
     console.log("masuk");
-    if (!printer || !isConnected) return;
+    // if (!printer || !isConnected) return;
 
     const content = printDiv.current.innerHTML;
 
@@ -112,11 +112,11 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
     ) {
       window.IminPrinterPlugin.printText(content);
     } else {
-      await printer.setFontSize(0); // default
-      await printer.printText("Hello Imin Printer\n");
-      await printer.printText(content);
-      await printer.printAndFeed(3);
-      await printer.cutPaper();
+      // await printer.setFontSize(0); // default
+      // await printer.printText("Hello Imin Printer\n");
+      // await printer.printText(content);
+      // await printer.printAndFeed(3);
+      // await printer.cutPaper();
 
       if (!printDiv.current) return;
       // const canvas = await html2canvas(printDiv.current, { scale: 0.95 });
@@ -129,12 +129,12 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
 
       const html = printDiv.current.outerHTML;
 
-      try {
-        await api.post("/print-tag", { html: html });
-      } catch (err) {
-        console.error("Gagal print:", err);
-        alert("Gagal print");
-      }
+      // try {
+      //   await api.post("/print-tag", { image: imgData });
+      // } catch (err) {
+      //   console.error("Gagal print:", err);
+      //   alert("Gagal print");
+      reactToPrintFn();
     }
 
     // const canvas = await html2canvas(element, {

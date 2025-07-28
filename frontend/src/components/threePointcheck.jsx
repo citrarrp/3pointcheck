@@ -121,9 +121,12 @@ export default function InputSmart() {
       //     item.delivery_cycle === cycleFilter
       //   )
       // );
+      console.log(dnFilter, "conorh");
       Data.filter(
         (item) =>
-          (!cycleFilter || item.delivery_cycle === cycleFilter) &&
+          (!cycleFilter ||
+            item.delivery_cycle === cycleFilter ||
+            item.delivery_cycle === String(cycleFilter)) &&
           (!dnFilter || dnFilter.includes(item.dn_number))
       ).forEach((item) => {
         const qty = Number(item.qty) || 1;
@@ -193,20 +196,20 @@ export default function InputSmart() {
           { qty: 0, qtyKanban: 0 },
         ])
       );
-      // console.log(
-      //   singleFieldMap,
-      //   comboFieldMap,
-      //   dnMap,
-      //   comboToDNMap,
-      //   currentDNMap,
-      //   "currentprogress",
-      //   currentProgressMap,
-      //   currentsingleFieldMap,
-      //   jumlahOrderComboField,
-      //   jumlahOrderDNMap,
-      //   comboToMaterialMap,
-      //   "ini infonya"
-      // );
+      console.log(
+        singleFieldMap,
+        comboFieldMap,
+        dnMap,
+        comboToDNMap,
+        currentDNMap,
+        "currentprogress",
+        currentProgressMap,
+        currentsingleFieldMap,
+        jumlahOrderComboField,
+        jumlahOrderDNMap,
+        comboToMaterialMap,
+        "ini infonya"
+      );
       return {
         singleFieldMap,
         comboFieldMap,
@@ -359,6 +362,7 @@ export default function InputSmart() {
     if (!Data || !selectedFields?.length) return;
 
     const newSummary = generateSummary(Data, selectedFields, "_");
+    console.log(newSummary, "INI SUMMARY");
     setSummary(newSummary);
   }, [Data, selectedFields, generateSummary]);
 
@@ -464,6 +468,7 @@ export default function InputSmart() {
 
       // console.log(res, "response", separator);
       const result = res.data.data || [];
+      console.log(result, res, "ini response");
 
       if (result.length > 0) {
         setData(result);
@@ -901,6 +906,9 @@ export default function InputSmart() {
     )
       return;
 
+    let uniqueKey = "";
+    console.log(summary, "ringkasan");
+
     const {
       singleFieldMap,
       comboFieldMap,
@@ -917,7 +925,7 @@ export default function InputSmart() {
 
     const clonedCurrentDNMap = new Map(currentDNMap);
     const clonedCurrentProgressMap = new Map(currentProgressMap);
-    console.log(comboToMaterialMap);
+    console.log(comboToMaterialMap, "ini pertama");
     const seen = new Set();
 
     rows.forEach((row, index) => {
@@ -957,6 +965,7 @@ export default function InputSmart() {
         kanban.length >= dataReal.kanbanlength
       ) {
         const { comboKey } = comboMatch;
+        uniqueKey = comboKey;
 
         const current = clonedCurrentProgressMap.get(comboKey) || {
           qty: 0,
@@ -1004,7 +1013,7 @@ export default function InputSmart() {
       let closed = true;
       let currentQty = 0;
       let currentOrder = 0;
-      let uniqueKey = "";
+      console.log(clonedCurrentProgressMap, "ini");
 
       combos.forEach((comboKey) => {
         const target = comboFieldMap.get(comboKey)?.qty || 0;
@@ -1018,17 +1027,27 @@ export default function InputSmart() {
         if (progress < target) closed = false;
         currentQty += progress;
         currentOrder *= progress;
-        uniqueKey = comboKey;
       });
+      const { qty, qtyKanban } = clonedCurrentProgressMap.get(uniqueKey) || {
+        qty: 0,
+        qtyKanban: 0,
+      };
+      console.log(uniqueKey, qty, "unik kan");
       const qtyK = comboFieldMap.get(uniqueKey)?.qty;
+      console.log("jumlah", comboFieldMap, comboFieldMap.get(uniqueKey)?.qty);
       const qtyPcs = comboFieldMap.get(uniqueKey)?.qtyKanban;
+      const totalQty = dnMap.get(dn);
+      console.log(
+        clonedCurrentProgressMap.get(uniqueKey).qty,
+        "jumlah qty sekarang"
+      );
 
       console.log(uniqueKey, "KOLOM UNIK");
       summaryTable.push({
         dn_number: dn,
         jumlah_order: jumlahOrderDNMap.get(dn),
-        total: qtyK,
-        sisa: Math.max(qtyK - qtyPcs, 0),
+        total: totalQty,
+        sisa: Math.max(totalQty - qty, 0),
         orderNow: currentOrder,
         status: closed ? "Closed" : "Open",
       });
@@ -1613,13 +1632,26 @@ export default function InputSmart() {
   useEffect(() => {
     if (!Data || Data.length === 0) return;
 
+    console.log(
+      cycleFilter,
+      Data.filter(
+        (item) =>
+          !cycleFilter ||
+          item.delivery_cycle === String(cycleFilter) ||
+          item.delivery_cycle === cycleFilter
+      )
+    );
     const filteredDN = Array.from(
       new Set(
         Data.filter(
-          (item) => !cycleFilter || item.delivery_cycle === cycleFilter
+          (item) =>
+            !cycleFilter ||
+            item.delivery_cycle === String(cycleFilter) ||
+            item.delivery_cycle === cycleFilter
         ).map((d) => d.dn_number)
       )
     ).sort();
+    console.log(filteredDN, "dn filters");
 
     setDNFilter(filteredDN);
   }, [Data, cycleFilter]);
@@ -1686,7 +1718,9 @@ export default function InputSmart() {
                     new Set(
                       Data.filter(
                         (item) =>
-                          !cycleFilter || item.delivery_cycle === cycleFilter
+                          !cycleFilter ||
+                          item.delivery_cycle === String(cycleFilter) ||
+                          item.delivery_cycle === cycleFilter
                       ).map((d) => d.dn_number)
                     )
                   )
