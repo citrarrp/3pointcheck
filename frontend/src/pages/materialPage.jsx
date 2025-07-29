@@ -214,11 +214,15 @@ export default function PageUniqueMaterial() {
   //   </>
   // );
 
+  function getPrefixOnly(code) {
+    const match = code.match(/^([A-Z]+)/);
+    return match ? match[1] : "";
+  }
   const uniqueMaterialCustomer = [];
   const seen = new Set();
 
   data.forEach((item) => {
-    const key = `${item.material}-${item.customer_description}`;
+    const key = `${item.material}-${getPrefixOnly(item.customer)}`;
     if (!seen.has(key)) {
       seen.add(key);
       uniqueMaterialCustomer.push(item);
@@ -244,7 +248,9 @@ export default function PageUniqueMaterial() {
             {uniqueMaterialCustomer
               .filter((item) => item.line === line.split("-")[0])
               .map((tag) => {
-                const combinedKey = `${tag.material}_${tag.customer_description}`;
+                const combinedKey = `${tag.material}_${getPrefixOnly(
+                  tag.customer
+                )}`;
                 return (
                   <div
                     key={combinedKey}
@@ -265,7 +271,7 @@ export default function PageUniqueMaterial() {
                       </div>
                     </div>
                     <div className="absolute bottom-2 right-3 text-xs text-gray-400">
-                      {tag.customer_description}
+                      {getPrefixOnly(tag.customer)}
                     </div>
                   </div>
                 );

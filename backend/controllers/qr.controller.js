@@ -97,6 +97,7 @@ export const createInputQR = async (req, res) => {
       labelSupplier: row.labelSupplier,
       dateDelivery: selectedDate,
       validPart,
+      dnFound,
       pesan,
     };
     const options = {

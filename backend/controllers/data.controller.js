@@ -117,6 +117,7 @@ export const getDatabyDate = async (req, res) => {
 };
 
 export const getUniqueDataAll = async (req, res) => {
+  console.log("cari disini");
   try {
     const test = [
       { $unwind: "$kolomSelected" },
@@ -147,7 +148,9 @@ export const getUniqueDataAll = async (req, res) => {
 
       { $replaceRoot: { newRoot: "$kolomSelected.mergedData" } },
       { $match: { customer_material: { $exists: true, $ne: null } } },
-
+      {
+        $sort: { updatedAt: -1 }, // Pastikan updatedAt terbaru di atas
+      },
       {
         $group: {
           _id: "$customer_material",
@@ -803,7 +806,7 @@ export const updateData = async (req, res) => {
             : matchingMaterial?.customer_material || "",
 
           line: matchingMaterial?.line,
-          customer: matchingMaterial?.customer_description,
+          customer: matchingMaterial?.customer,
         };
       });
 

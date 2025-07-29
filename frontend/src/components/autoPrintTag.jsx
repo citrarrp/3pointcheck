@@ -19,7 +19,7 @@ import {
 } from "react-icons/ri";
 import { PiStarAndCrescentLight } from "react-icons/pi";
 import { PiParallelogramBold } from "react-icons/pi";
-import { CiMedicalCross } from "react-icons/ci";
+import { BsLightningCharge } from "react-icons/bs";
 import { BiCircleHalf } from "react-icons/bi";
 import { SiBastyon } from "react-icons/si";
 import { GrFastForward } from "react-icons/gr";
@@ -30,6 +30,15 @@ import { MdFormatOverline } from "react-icons/md";
 import { TiPlusOutline } from "react-icons/ti";
 import { TiWavesOutline } from "react-icons/ti";
 import { TiThLargeOutline } from "react-icons/ti";
+import { GiZigzagHieroglyph } from "react-icons/gi";
+import { IoMdCloudOutline } from "react-icons/io";
+import { FaRegBookmark } from "react-icons/fa";
+import { RiMapLine } from "react-icons/ri";
+import { CiLocationArrow1 } from "react-icons/ci";
+import { SiNextbilliondotai } from "react-icons/si";
+import { LuFishSymbol } from "react-icons/lu";
+import { VscSymbolNumeric } from "react-icons/vsc";
+import { TbArrowBadgeDown } from "react-icons/tb";
 
 const TagMTM = ({
   tagData,
@@ -87,7 +96,7 @@ const TagMTM = ({
     RiPokerDiamondsLine,
     PiStarAndCrescentLight,
     PiParallelogramBold,
-    CiMedicalCross,
+    BsLightningCharge,
     RiPokerHeartsLine,
     BiCircleHalf,
     SiBastyon,
@@ -99,13 +108,25 @@ const TagMTM = ({
     TiPlusOutline,
     TiThLargeOutline,
     TiWavesOutline,
+    GiZigzagHieroglyph,
+    IoMdCloudOutline,
+    FaRegBookmark,
+    RiMapLine,
+    CiLocationArrow1,
+    SiNextbilliondotai,
+    LuFishSymbol,
+    VscSymbolNumeric,
+    TbArrowBadgeDown,
   ];
 
+  // |${
+  //                   dataCust[0].selectedData
+  //                 }
   const Footer = () => (
     <div className="absolute bottom-2 left-2 right-1 text-[10px] space-y-1">
       <div className="flex items-center">
         <span className="font-bold">OPERATOR</span>
-        <span className="ml-2">
+        <span className="ml-[21px]">
           : {user.npk} {user.fullname.toUpperCase().slice(0, 10)}
         </span>
       </div>
@@ -133,8 +154,8 @@ const TagMTM = ({
     </div>
   );
   const IconComponent = shapeIcons[idx];
-  const customSize = [13, 14, 20].includes(idx) ? 26 : 32;
 
+  const customSize = [13, 14, 20, 24, 27, 29].includes(idx) ? 28 : 32;
   const Layout1 = () => (
     <div className="w-[90mm] h-[70mm] p-2 border-1 border-[#1e2939] text-[10pt] font-sans bg-[#ffffff] relative leading-normal">
       <div className="flex justify-between items-center border-b border-[#1e2939] pb-1 mb-2">
@@ -166,12 +187,12 @@ const TagMTM = ({
           <QRCode
             value={
               dataCust[0]?.selectedData
-                ? `${code}|${moment(date).format("DDMMYYYY")}|${shift}|${
-                    String(tagData[0]?.sequence + 1).padStart(3, "0") || "001"
-                  }`
-                : `${code}|${moment(date).format("DDMMYYYY")}|${shift}|${
-                    String(tagData[0]?.sequence + 1).padStart(3, "0") || "001"
-                  }`
+                ? `${code}|${moment(date).format("DDMMYYYY")}|${shift}|${String(
+                    (tagData[0]?.qty ?? 0) + 1
+                  ).padStart(4, "0")}|${dataPart[0]?.customer_material}`
+                : `${code}|${moment(date).format("DDMMYYYY")}|${shift}|${String(
+                    (tagData[0]?.qty ?? 0) + 1
+                  ).padStart(4, "0")}|${dataPart[0]?.customer_material}`
             }
             size={58}
             level="H"
@@ -210,14 +231,12 @@ const TagMTM = ({
           <QRCode
             value={
               dataCust[0]?.selectedData
-                ? `${code}|${moment(date).format("DDMMYYYY")}|${shift}|${
-                    dataCust[0].selectedData
-                  }|${
-                    String(tagData[0]?.sequence + 1).padStart(3, "0") || "001"
-                  }`
-                : `${code}|${moment(date).format("DDMMYYYY")}|${shift}|${
-                    String(tagData[0]?.sequence + 1).padStart(3, "0") || "001"
-                  }`
+                ? `${code}|${moment(date).format("DDMMYYYY")}|${shift}|${String(
+                    (tagData[0]?.qty ?? 0) + 1
+                  ).padStart(4, "0")}|${dataPart[0].customer_material}`
+                : `${code}|${moment(date).format("DDMMYYYY")}|${shift}|${String(
+                    (tagData[0]?.qty ?? 0) + 1
+                  ).padStart(4, "0")}|${dataPart[0].customer_material}`
             }
             size={58}
             level="H"

@@ -22,7 +22,7 @@ import {
 } from "react-icons/ri";
 import { PiStarAndCrescentLight } from "react-icons/pi";
 import { PiParallelogramBold } from "react-icons/pi";
-import { CiMedicalCross } from "react-icons/ci";
+import { BsLightningCharge } from "react-icons/bs";
 import { BiCircleHalf } from "react-icons/bi";
 import { SiBastyon } from "react-icons/si";
 import { GrFastForward } from "react-icons/gr";
@@ -33,6 +33,14 @@ import { MdFormatOverline } from "react-icons/md";
 import { TiPlusOutline } from "react-icons/ti";
 import { TiWavesOutline } from "react-icons/ti";
 import { TiThLargeOutline } from "react-icons/ti";
+import { GiZigzagHieroglyph } from "react-icons/gi";
+import { IoMdCloudOutline } from "react-icons/io";
+import { FaRegBookmark } from "react-icons/fa";
+import { RiMapLine } from "react-icons/ri";
+import { CiLocationArrow1 } from "react-icons/ci";
+import { SiNextbilliondotai } from "react-icons/si";
+import { LuFishSymbol } from "react-icons/lu";
+import { VscSymbolNumeric } from "react-icons/vsc";
 
 export default function LabelPage() {
   const navigate = useNavigate();
@@ -98,7 +106,7 @@ export default function LabelPage() {
     RiPokerDiamondsLine,
     PiStarAndCrescentLight,
     PiParallelogramBold,
-    CiMedicalCross,
+    BsLightningCharge,
     RiPokerHeartsLine,
     BiCircleHalf,
     SiBastyon,
@@ -110,6 +118,14 @@ export default function LabelPage() {
     TiPlusOutline,
     TiThLargeOutline,
     TiWavesOutline,
+    GiZigzagHieroglyph,
+    IoMdCloudOutline,
+    FaRegBookmark,
+    RiMapLine,
+    CiLocationArrow1,
+    SiNextbilliondotai,
+    LuFishSymbol,
+    VscSymbolNumeric,
   ];
 
   return (
@@ -184,7 +200,7 @@ export default function LabelPage() {
         {/* </div> */}
         {/* <div className="grid grid-cols-6 gap-6 p-6">
           {shapeIcons.map((IconComponent, idx) => {
-            const customSize = [13, 14, 20].includes(idx) ? 28 : 32;
+            const customSize = [13, 14, 20, 24, 27, 29].includes(idx) ? 28 : 32;
             return (
               <div
                 key={idx}

@@ -414,6 +414,7 @@ export default function InputSmart() {
                   kanban: input.kanban || "",
                   labelSupplier: kanban ? input.labelSupplier : "",
                   pesan: input.pesan,
+                  dnFound: input.dnFound,
                 };
                 newValidList[input.index] = input.status || false;
               }
@@ -436,7 +437,7 @@ export default function InputSmart() {
             setRows(newRows);
             setValidList(newValidList);
           }
-          console.log(newRows, "ini row awal");
+          // console.log(newRows, "ini row awal");
         }
         setShouldAutoFocus(true);
       } catch (error) {
@@ -452,6 +453,31 @@ export default function InputSmart() {
       setRefreshInputs(false); // reset lagi
     }
   }, [refreshInputs, fetchSavedInputs, selectedDate]);
+
+  const prevDnFilter = useRef([]);
+  useEffect(() => {
+    if (!rows.length || !dnFilter.length) return;
+
+    const prev = prevDnFilter.current.join(",");
+    const now = dnFilter.join(",");
+
+    console.log(prev, now, "tes dnFilter");
+
+    if (prev !== now) {
+      prevDnFilter.current = [...dnFilter];
+      fetchSavedInputs(selectedDate);
+      setTimeout(() => {
+        setValidList((prevValidList) =>
+          rows.map((row, index) => {
+            const found = (row.dnFound || "").trim().toUpperCase();
+            const match = dnFilter.map((x) => x.toUpperCase()).includes(found);
+            console.log(match, prevValidList[index], "contoh dalam");
+            return match ? prevValidList[index] : false;
+          })
+        );
+      }, 50); // tunggu fetch selesai
+    }
+  }, [dnFilter, fetchSavedInputs, selectedDate, rows]);
 
   const handleClickDate = async (Date) => {
     setDataLoaded(false);
@@ -925,7 +951,7 @@ export default function InputSmart() {
 
     const clonedCurrentDNMap = new Map(currentDNMap);
     const clonedCurrentProgressMap = new Map(currentProgressMap);
-    console.log(comboToMaterialMap, "ini pertama");
+    // console.log(comboToMaterialMap, "ini pertama");
     const seen = new Set();
 
     rows.forEach((row, index) => {
@@ -1013,7 +1039,7 @@ export default function InputSmart() {
       let closed = true;
       let currentQty = 0;
       let currentOrder = 0;
-      console.log(clonedCurrentProgressMap, "ini");
+      // console.log(clonedCurrentProgressMap, "ini");
 
       combos.forEach((comboKey) => {
         const target = comboFieldMap.get(comboKey)?.qty || 0;
@@ -1032,15 +1058,15 @@ export default function InputSmart() {
         qty: 0,
         qtyKanban: 0,
       };
-      console.log(uniqueKey, qty, "unik kan");
+      // console.log(uniqueKey, qty, "unik kan");
       const qtyK = comboFieldMap.get(uniqueKey)?.qty;
-      console.log("jumlah", comboFieldMap, comboFieldMap.get(uniqueKey)?.qty);
+      // console.log("jumlah", comboFieldMap, comboFieldMap.get(uniqueKey)?.qty);
       const qtyPcs = comboFieldMap.get(uniqueKey)?.qtyKanban;
       const totalQty = dnMap.get(dn);
-      console.log(
-        clonedCurrentProgressMap.get(uniqueKey).qty,
-        "jumlah qty sekarang"
-      );
+      // console.log(
+      //   clonedCurrentProgressMap.get(uniqueKey).qty,
+      //   "jumlah qty sekarang"
+      // );
 
       console.log(uniqueKey, "KOLOM UNIK");
       summaryTable.push({

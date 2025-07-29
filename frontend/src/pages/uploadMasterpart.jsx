@@ -49,7 +49,7 @@ const MaterialUpload = () => {
           } else if (excelKey === "Minimum Delivery Qty") {
             mappedRow[mongoKey] = Number(row[excelKey]) || 0;
           } else {
-            mappedRow[mongoKey] = row[excelKey] || "";
+            mappedRow[mongoKey] = row[excelKey] || "-";
           }
         }
         return mappedRow;
@@ -78,6 +78,7 @@ const MaterialUpload = () => {
         if (res?.data.success) {
           successfulUploads++;
         } else {
+          console.log("respon", res.data);
           throw new Error("Gagal upload baris");
         }
       } catch (err) {

@@ -37,6 +37,9 @@ const scanQRSchema = new mongoose.Schema({
     type: String,
     default: undefined,
   },
+  dnFound: {
+    type: String,
+  },
   pesan: {
     type: String,
   },

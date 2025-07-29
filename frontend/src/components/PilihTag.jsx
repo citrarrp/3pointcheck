@@ -10,7 +10,7 @@ import { useReactToPrint } from "react-to-print";
 import { HiChevronDown } from "react-icons/hi";
 import api from "../utils/api";
 import moment from "moment-timezone";
-import TagMTM from "./autoPrintTag";
+import TagMTM from "./autoPrintTag.jsx";
 import { AuthContext } from "../context/auth";
 import DatePicker from "react-datepicker";
 import html2canvas from "html2canvas";
@@ -18,6 +18,7 @@ import IminPrinter from "../assets/imin-printer.esm.browser.js";
 
 const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
   const [shouldPrint, setShouldPrint] = useState(false);
+  const [isPrint, setIsPrinting] = useState(false);
   const [tableComponent, setTableComponent] = useState(null);
   const { user, loading } = useContext(AuthContext);
   // const [customerName, setCustomerName] = useState("");
@@ -128,13 +129,22 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
       const imgData = canvas.toDataURL("image/png", 1.0);
 
       const html = printDiv.current.outerHTML;
+      setIsPrinting(true); // bisa memicu style visibility
 
       // try {
       //   await api.post("/print-tag", { image: imgData });
       // } catch (err) {
       //   console.error("Gagal print:", err);
       //   alert("Gagal print");
+      // reactToPrintFn();
+      const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      await delay(300); // tunggu visibility & render selesai
+
+      await delay(500); // tunggu dulu setengah detik
       reactToPrintFn();
+
+      setIsPrinting(false);
     }
 
     // const canvas = await html2canvas(element, {

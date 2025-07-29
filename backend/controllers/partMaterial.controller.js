@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 
 export const getMaterial = async (req, res) => {
   try {
-    const materials = await materialCustomer.find({}).sort({material : 1});
+    const materials = await materialCustomer.find({}).sort({ material: 1 });
     res
       .status(200)
       .json({ success: true, message: "Berhasil diambil", data: materials });
@@ -147,6 +147,7 @@ export const createMaterial = async (req, res) => {
 
 export const updateCustomerMaterialDesc = async (req, res) => {
   const data = req.body;
+  console.log(data, "tambahan");
 
   if (!data || Object.keys(data).length === 0) {
     return res.status(400).json({
@@ -158,10 +159,10 @@ export const updateCustomerMaterialDesc = async (req, res) => {
   const requiredFields = [
     // "sales_organization",
     // "distribution_channel",
-    // "customer",
+    "customer",
     "sap_number",
     "customer_material",
-    "material_description",
+    // "material_description",
   ];
   const missingFields = requiredFields.filter((field) => !data[field]);
 
@@ -173,21 +174,49 @@ export const updateCustomerMaterialDesc = async (req, res) => {
     });
   }
 
+  function normalizeCustomerMaterial(code) {
+    const match = code.match(/^([A-Z]{3,4})0([1-9]\d*)00([1-9]\d*)$/);
+    if (!match) return code;
+
+    const prefix = match[1]; // e.g. "ADM"
+    const angka1 = match[2]; // e.g. "15"
+    const angka2 = match[3]; // e.g. "1"
+
+    return `${prefix}0${angka2}00${angka1}`;
+  }
+
   try {
+    const normalized = normalizeCustomerMaterial(data.customer);
+
     const filter = {
       // sales_organization: data?.sales_organization,
       // distribution_channel: data?.distribution_channel,
-      // customer: data?.customer,
+      customer: data.customer,
       sap_number: data.sap_number,
-      material: data.sap_number,
+      // material: data.sap_number,
       customer_material: data.customer_material,
-      material_description: data.material_description,
+      // material_description: data.material_description,
     };
 
-    const existing = await materialCustomer.findOne(filter);
+    console.log(data.customer, normalized, "contoh customer");
+    let existing = await materialCustomer.findOne(filter);
 
     if (!existing) {
-      const newData = new materialCustomer({ ...data });
+      console.log(
+        "Tidak ditemukan, coba ulang pakai fallback normalized customer"
+      );
+
+      filter.customer = normalized;
+      existing = await materialCustomer.findOne(filter);
+    }
+
+    if (!existing) {
+      // console.log(data, "data baru");
+      const newData = new materialCustomer({
+        ...data,
+        material: data.sap_number,
+        line: data.line === "-" ? "N/A" : data.line,
+      });
 
       await newData.save();
 
@@ -210,9 +239,12 @@ export const updateCustomerMaterialDesc = async (req, res) => {
     //   },
     // };
     else {
-      console.log("ini");
+      console.log("buruh update");
       const needsUpdate =
-        !existing.line?.trim() || !existing.customer_description?.trim();
+        !existing.line?.trim() ||
+        existing.line === "-" ||
+        !existing.customer_description?.trim() ||
+        existing.customer_description === "-";
 
       if (!needsUpdate) {
         return res.status(200).json({
@@ -221,7 +253,7 @@ export const updateCustomerMaterialDesc = async (req, res) => {
           data: existing,
         });
       }
-      existing.line = data.line || existing.line;
+      existing.line = (data.line === "-" ? "N/A" : data.line) || existing.line;
       existing.customer_description =
         data.customer_description || existing.customer_description;
 

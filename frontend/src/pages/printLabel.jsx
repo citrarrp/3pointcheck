@@ -24,7 +24,7 @@ export default function PrintLabel() {
       setIsLoading(true);
       const res = await api.get("/data/all/unique");
 
-      console.log(res.data.data);
+      console.log(res.data.data, "isi hasil semua");
       setData(res.data.data);
       console.log("data ada", res.data.data);
     } catch (err) {
@@ -234,9 +234,14 @@ export default function PrintLabel() {
     return dataMaterial.filter(
       (item) =>
         item.material === uniqueCode.split("_")[0] &&
-        item.customer_description === uniqueCode.split("_")[1]
+        item.customer.includes(uniqueCode.split("_")[1])
     );
   }, [dataMaterial, uniqueCode]);
+
+  function getPrefixOnly(code) {
+    const match = code.match(/^([A-Z]+)/);
+    return match ? match[1] : "";
+  }
   // const filteredData = kolomData.flatMap((item) =>
   //   item.data
   //     .filter((dataItem) => dataItem.part_no === uniqueCode && item.createdAt === selectedDate)
@@ -312,7 +317,7 @@ export default function PrintLabel() {
           code={uniqueCode.split("_")[0]}
           // sequenceFirst={Number(filteredData.sequence)}
 
-          customer={uniqueCode.split("_")[1]}
+          customer={getPrefixOnly(uniqueCode.split("_")[1])}
         />
       </>
       {/* ) : ( */}
