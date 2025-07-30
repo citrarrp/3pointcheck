@@ -122,12 +122,12 @@ export default function InputSmart() {
       //   )
       // );
       console.log(dnFilter, "conorh");
+      // && (!dnFilter || dnFilter.includes(item.dn_number))
       Data.filter(
         (item) =>
-          (!cycleFilter ||
-            item.delivery_cycle === cycleFilter ||
-            item.delivery_cycle === String(cycleFilter)) &&
-          (!dnFilter || dnFilter.includes(item.dn_number))
+          !cycleFilter ||
+          item.delivery_cycle === cycleFilter ||
+          item.delivery_cycle === String(cycleFilter)
       ).forEach((item) => {
         const qty = Number(item.qty) || 1;
         const orderQty = Number(item?.["order_(pcs)"]);
@@ -1004,7 +1004,8 @@ export default function InputSmart() {
         if (material === supplierMaterial) {
           const dn = comboToDNMap.get(comboKey);
 
-          if (dn) {
+          if (dn && dnFilter.includes(dn)) {
+            console.log(dn);
             clonedCurrentDNMap.set(dn, (clonedCurrentDNMap.get(dn) || 0) + 1);
             // clonedCurrentProgressMap.set(
             //   comboKey,
@@ -1043,16 +1044,16 @@ export default function InputSmart() {
 
       combos.forEach((comboKey) => {
         const target = comboFieldMap.get(comboKey)?.qty || 0;
-        currentOrder = comboFieldMap.get(comboKey).qtyKanban || 0;
+        const orderPerCombo = comboFieldMap.get(comboKey).qtyKanban || 0;
         const { qty, qtyKanban } = clonedCurrentProgressMap.get(comboKey) || {
           qty: 0,
           qtyKanban: 0,
         };
-        const progress = qty;
+        // const progress = qty;
 
-        if (progress < target) closed = false;
-        currentQty += progress;
-        currentOrder *= progress;
+        if (qty < target) closed = false;
+        currentQty += qty;
+        currentOrder = orderPerCombo * qty;
       });
       const { qty, qtyKanban } = clonedCurrentProgressMap.get(uniqueKey) || {
         qty: 0,
@@ -1068,12 +1069,13 @@ export default function InputSmart() {
       //   "jumlah qty sekarang"
       // );
 
-      console.log(uniqueKey, "KOLOM UNIK");
+      console.log(uniqueKey, "KOLOM UNIK", totalQty, qty);
+
       summaryTable.push({
         dn_number: dn,
         jumlah_order: jumlahOrderDNMap.get(dn),
         total: totalQty,
-        sisa: Math.max(totalQty - qty, 0),
+        sisa: Math.max(totalQty - currentQty, 0),
         orderNow: currentOrder,
         status: closed ? "Closed" : "Open",
       });
@@ -1158,6 +1160,7 @@ export default function InputSmart() {
     // separator,
     selectedFields,
     summary,
+    dnFilter,
     // selectedFields.length,
     dataReal,
     // dataReal.kanbanlength,
