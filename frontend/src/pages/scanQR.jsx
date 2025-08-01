@@ -21,7 +21,7 @@ export default function ScanQR() {
     fetchData();
   }, []);
 
-  // console.log(Data);
+  console.log(Data);
 
   return (
     <div className="space-y-6">

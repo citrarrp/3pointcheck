@@ -7,19 +7,26 @@ const materialSchema = new mongoose.Schema(
     //     ref: "tes",
     //     required: true,
     //   },
-    sales_organization: {
-      type: String,
-    },
-    distribution_channel: {
-      type: String,
-    },
+    // sales_organization: {
+    //   type: String,
+    // },
+    // distribution_channel: {
+    //   type: String,
+    // },
     customer: {
+      type: String,
+    },
+    customer_description: {
       type: String,
     },
     material: {
       type: String,
+      required: true,
     },
-    created_by: {
+    // created_by: {
+    //   type: String,
+    // },
+    unique: {
       type: String,
     },
     created_on: {
@@ -30,26 +37,30 @@ const materialSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    customer_material_description: {
-      type: String,
-    },
-    minimum_delivery_qty: {
+    // customer_material_description: {
+    //   type: String,
+    // },
+    // minimum_delivery_qty: {
+    //   type: Number,
+    //   default: 0,
+    // },
+    // base_unit_of_measure: {
+    //   type: String,
+    // },
+    qtyKanban: {
       type: Number,
       default: 0,
     },
-    base_unit_of_measure: {
+    // sap_number: {
+    //   type: String,
+    //   required: true,
+    // },
+    job_no: {
       type: String,
-    },
-    sap_number: {
-      type: String,
-      required: true,
     },
     material_description: {
       type: String,
       required: true,
-    },
-    customer_description: {
-      type: String,
     },
     line: {
       type: String,

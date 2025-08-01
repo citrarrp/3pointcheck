@@ -41,7 +41,6 @@ export const getDatabyDate = async (req, res) => {
       { $match: { _id: new ObjectId(customer) } },
       { $unwind: "$kolomSelected" },
 
-      // Gabungkan per index
       {
         $addFields: {
           "kolomSelected.mergedData": {
@@ -55,6 +54,7 @@ export const getDatabyDate = async (req, res) => {
                     selectedData: {
                       $arrayElemAt: ["$kolomSelected.selectedData", "$$idx"],
                     },
+                    kanban: "$kanban",
                   },
                 ],
               },
@@ -93,11 +93,13 @@ export const getDatabyDate = async (req, res) => {
           material: 1,
           material_description: 1,
           customer_material: 1,
+          customer_number: 1,
           "order_(pcs)": 1,
           delivery_cycle: 1,
+          selectedData: 1,
+          kanban: 1,
           delivery_date: 1,
           delivery_date_parsed: 1,
-          selectedData: 1,
         },
       },
     ];
@@ -173,6 +175,7 @@ export const getUniqueDataAll = async (req, res) => {
           material_description: 1,
           customer_material: 1,
           delivery_cycle: 1,
+          customer_number: 1,
           line: 1,
           customer: 1,
           delivery_date: 1,
@@ -283,7 +286,7 @@ export const getData = async (req, res) => {
     page = parseInt(page);
     limit = limit !== undefined ? parseInt(limit) : null;
     if (isNaN(page) || page < 1) page = 1;
-    if ((isNaN(limit) && limit !== null) || limit < 1) limit = 10;
+    if ((isNaN(limit) && limit !== null) || limit < 1) limit = 40;
 
     let filter = {};
     if (search) {
@@ -417,15 +420,17 @@ export const createData = async (req, res) => {
         // );
         const matchingMaterial = materialData.find((m) => {
           if (dataItem.customer_material) {
-            return m.customer_material === dataItem.customer_material;
+            return (
+              m.customer_material.trim() === dataItem.customer_material.trim()
+            );
           } else if (dataItem.material) {
             if (dataItem.customer) {
               return (
-                m.material === dataItem.material &&
-                m.customer === dataItem.customer
+                m.material.trim() === dataItem.material.trim() &&
+                m.customer.trim() === dataItem.customer.trim()
               );
             } else {
-              return m.material === dataItem.material;
+              return m.material.trim() === dataItem.material.trim();
             }
           }
         });
@@ -445,6 +450,8 @@ export const createData = async (req, res) => {
           customer_material: dataItem.customer_material
             ? dataItem.customer_material
             : matchingMaterial?.customer_material || "",
+          qty: (dataItem?.qty ? dataItem.qty : matchingMaterial.qtyKanban) ?? 0,
+          job_no: dataItem.job_no ? dataItem.job_no : matchingMaterial.job_no,
           line: matchingMaterial?.line,
           customer: matchingMaterial?.customer_description,
         };
@@ -497,6 +504,7 @@ export const createData = async (req, res) => {
       //       parseInt(dataItem.delivery_cycle) === 1) &&
       //     matchedStep !== undefined
       // )
+      console.log(tracking, "ada");
 
       for (const [stepKey, processName] of Object.entries(defaultSteps)) {
         const matchedItem = tracking.find(
@@ -766,7 +774,7 @@ export const updateData = async (req, res) => {
       });
 
       console.log(materialData[0]);
-      if (!materialData) {
+      if (!materialData || materialData.length === 0) {
         return res.status(404).json({ message: "Material tidak ditemukan" });
       }
 
@@ -804,7 +812,8 @@ export const updateData = async (req, res) => {
           customer_material: dataItem.customer_material
             ? dataItem.customer_material
             : matchingMaterial?.customer_material || "",
-
+          qty: (dataItem?.qty ? dataItem.qty : matchingMaterial.qtyKanban) ?? 0,
+          job_no: dataItem.job_no ? dataItem.job_no : matchingMaterial.job_no,
           line: matchingMaterial?.line,
           customer: matchingMaterial?.customer,
         };

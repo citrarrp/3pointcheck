@@ -91,11 +91,11 @@ export default function Home() {
 
     filtered.forEach((item) => {
       const tanggal = moment(item.tanggal).format("YYYY-MM-DD");
-      const key = `${item.customerId.nama}-${item.cycleNumber}-${item?.nama}-${tanggal}`;
+      const key = `${item.customerId?.nama}-${item.cycleNumber}-${item?.nama}-${tanggal}`;
 
       if (!uniqueMap.has(key)) {
         uniqueMap.set(key, {
-          customer: item.customerId.nama,
+          customer: item.customerId?.nama,
           cycle: item.cycleNumber,
           status: item.status,
           proses: item.nama,

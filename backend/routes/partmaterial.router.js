@@ -10,7 +10,7 @@ import {
 const router = express.Router();
 
 router.get("/", getMaterial);
-router.post("/", updateCustomerMaterialDesc);
+router.post("/", createMaterial);
 router.delete("/:id", deleteMaterial);
 // router.put("/update", updateCustomerMaterialDesc);
 

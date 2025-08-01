@@ -72,10 +72,10 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
   //   const text = printDiv.current.innerText;
   //   window.imin?.printText(text); // jika dari iMin WebView
   // };
-  const printerIP = "ws://localhost:8081";
+  // const printerIP = "ws://localhost:8081";
   useEffect(() => {
     const initPrinter = async () => {
-      const instance = new IminPrinter(printerIP);
+      const instance = new IminPrinter();
       const connected = await instance.connect();
       if (connected) {
         await instance.initPrinter();
@@ -141,7 +141,7 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
 
       await delay(300); // tunggu visibility & render selesai
 
-      await delay(500); // tunggu dulu setengah detik
+      // await delay(500); // tunggu dulu setengah detik
       reactToPrintFn();
 
       setIsPrinting(false);

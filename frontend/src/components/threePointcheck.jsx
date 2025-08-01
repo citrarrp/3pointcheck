@@ -99,6 +99,7 @@ export default function InputSmart() {
       const singleFieldMap = {}; // { fieldName: Map<fieldValue, totalQty> } => order_No, nilai unik
       const currentsingleFieldMap = {};
       const comboFieldMap = new Map(); // Map<joinedKey, totalQty> => kombinasi
+      const selectedDataMap = new Map();
       const dnMap = new Map(); // Map<dn_number, totalQty> => dn/order_no
       const currentProgressMap = new Map(); // key = combo dari selectedFields qtyKanban
       const currentDNMap = new Map(); // qtyKanban, qty order_no
@@ -121,13 +122,11 @@ export default function InputSmart() {
       //     item.delivery_cycle === cycleFilter
       //   )
       // );
-      console.log(dnFilter, "conorh");
+      console.log(dnFilter, "conorh", Data, "data ini berisi selectedData");
       // && (!dnFilter || dnFilter.includes(item.dn_number))
       Data.filter(
         (item) =>
-          !cycleFilter ||
-          item.delivery_cycle === cycleFilter ||
-          item.delivery_cycle === String(cycleFilter)
+          !cycleFilter || String(item.delivery_cycle) === String(cycleFilter)
       ).forEach((item) => {
         const qty = Number(item.qty) || 1;
         const orderQty = Number(item?.["order_(pcs)"]);
@@ -167,6 +166,7 @@ export default function InputSmart() {
 
         // currentProgressMap.set(comboKey, { qty: 0, qtyKanban: 0 }); // Set awal
         comboToMaterialMap.set(comboKey, item.material); // tergantung field material
+        selectedDataMap.set(comboKey, item.selectedData);
 
         if (!comboFieldMap.has(comboKey)) {
           comboFieldMap.set(comboKey, { qty: 0, qtyKanban: qty });
@@ -222,6 +222,7 @@ export default function InputSmart() {
         jumlahOrderDNMap,
         comboToMaterialMap,
         clonedCurrentComboMap,
+        selectedDataMap,
       };
     },
     [cycleFilter, dnFilter, Data]
@@ -268,7 +269,8 @@ export default function InputSmart() {
     row,
     comboToDNMap,
     dnMap,
-    comboToMaterialMap
+    comboToMaterialMap,
+    selectedDataMap
   ) {
     // console.log(
     //   comboFieldMap,
@@ -306,10 +308,24 @@ export default function InputSmart() {
       );
 
       // console.log(comboToDNMap, comboKey, comboToDNMap.get(comboKey));
-      const material = comboToMaterialMap.get(comboKey).toLowerCase();
-      const supplierMaterial = supplier.split("|")[0];
+      const material = comboToMaterialMap
+        .get(comboKey)
+        .replace(/[-_/ ]/g, "")
+        .toLowerCase();
+      const unique = selectedDataMap
+        .get(comboKey)
+        .replace(/[-_/ ]/g, "")
+        .toLowerCase();
+      const supplierMaterial = supplier
+        .split("|")[0]
+        .replace(/[-_/ ]/g, "")
+        .toLowerCase();
 
-      if (material?.toLowerCase() === supplierMaterial && containsAll) {
+      if (
+        material?.toLowerCase() === supplierMaterial ||
+        unique?.toLowerCase() === supplierMaterial ||
+        (supplierMaterial.includes(unique?.toLowerCase()) && containsAll)
+      ) {
         const matchedDN = comboToDNMap.get(comboKey);
 
         const qtyActual = value.qty;
@@ -362,7 +378,7 @@ export default function InputSmart() {
     if (!Data || !selectedFields?.length) return;
 
     const newSummary = generateSummary(Data, selectedFields, "_");
-    console.log(newSummary, "INI SUMMARY");
+    // console.log(newSummary, "INI SUMMARY");
     setSummary(newSummary);
   }, [Data, selectedFields, generateSummary]);
 
@@ -397,7 +413,7 @@ export default function InputSmart() {
         const savedInputs = res.data.data;
 
         if (savedInputs && savedInputs.length > 0) {
-          console.log(new Date(), "waktu ambil");
+          // console.log(new Date(), "waktu ambil");
           const roundedLength = Math.ceil(savedInputs.length / 10) * 10;
           const newRows = Array.from({ length: roundedLength }, () => ({
             kanban: "",
@@ -557,19 +573,19 @@ export default function InputSmart() {
       qtyNow,
       qtyAll,
     }) => {
-      console.log(
-        "disini apa dn",
-        dn,
-        total,
-        sudahInput,
-        sudahInputAll,
-        totalMaplength,
-        totalDNCycle,
-        sudahClosedDNCycle,
-        forceFinish,
-        qtyNow,
-        qtyAll
-      );
+      // console.log(
+      //   "disini apa dn",
+      //   dn,
+      //   total,
+      //   sudahInput,
+      //   sudahInputAll,
+      //   totalMaplength,
+      //   totalDNCycle,
+      //   sudahClosedDNCycle,
+      //   forceFinish,
+      //   qtyNow,
+      //   qtyAll
+      // );
       if (sudahInputAll == null || totalMaplength == null) return;
 
       if (total - sudahInput < 0) return;
@@ -592,7 +608,7 @@ export default function InputSmart() {
           qty: qtyNow,
         };
 
-        console.log(basePayload, "dasar payload");
+        // console.log(basePayload, "dasar payload");
         let res;
 
         if (sudahInput === 1 && totalMaplength - sudahInputAll === 0) {
@@ -627,7 +643,7 @@ export default function InputSmart() {
           } else {
             statusInput = "-";
           }
-          console.log(res, "hasil reponse");
+          // console.log(res, "hasil reponse");
           if (
             res?.data?.verificationCode &&
             (sudahInputAll === totalMaplength || statusInput === "done")
@@ -707,7 +723,7 @@ export default function InputSmart() {
           }
         }
 
-        console.log(res, "hasil reponse");
+        // console.log(res, "hasil reponse");
 
         if (forceFinish && res.data.verificationCode) {
           await axios.put(
@@ -947,6 +963,7 @@ export default function InputSmart() {
       jumlahOrderDNMap,
       comboToMaterialMap,
       clonedCurrentComboMap,
+      selectedDataMap,
     } = summary;
 
     const clonedCurrentDNMap = new Map(currentDNMap);
@@ -999,9 +1016,21 @@ export default function InputSmart() {
         };
 
         const material = comboToMaterialMap.get(comboKey).toLowerCase();
-        const supplierMaterial = supplier.toLowerCase().split("|")[0];
+        const supplierMaterial = supplier
+          .toLowerCase()
+          .split("|")[0]
+          .replace(/[-_/ ]/g, "")
+          .toLowerCase();
+        const unique = selectedDataMap
+          .get(comboKey)
+          .replace(/[-_/ ]/g, "")
+          .toLowerCase();
 
-        if (material === supplierMaterial) {
+        if (
+          material === supplierMaterial ||
+          unique?.toLowerCase() === supplierMaterial ||
+          supplierMaterial.includes(unique?.toLowerCase())
+        ) {
           const dn = comboToDNMap.get(comboKey);
 
           if (dn && dnFilter.includes(dn)) {
@@ -1110,21 +1139,22 @@ export default function InputSmart() {
         currentsingleFieldMap,
         jumlahOrderComboField,
         jumlahOrderDNMap,
-        comboToMaterialMap
+        comboToMaterialMap,
+        selectedDataMap
       );
 
-      // console.log(
-      //   dn,
-      //   totalQty,
-      //   currentQty,
-      //   comboToDNMap.size,
-      //   closedCount,
-      //   dnMap.size,
-      //   closedCount,
-      //   closedCount === comboToDNMap.size, // apa dn sudah ada semua, dnMap, dan
-      //   jumlahOrderDNMap.get(dn), // jumlah qty DN
-      //   jumlahOrderDNMap.get(dn)
-      // );
+      console.log(
+        dn,
+        totalQty,
+        currentQty,
+        comboToDNMap.size,
+        closedCount,
+        dnMap.size,
+        closedCount,
+        closedCount === comboToDNMap.size, // apa dn sudah ada semua, dnMap, dan
+        jumlahOrderDNMap.get(dn), // jumlah qty DN
+        jumlahOrderDNMap.get(dn)
+      );
       console.log("unik", uniqueKey);
 
       await updateDnStatus({
@@ -1179,10 +1209,12 @@ export default function InputSmart() {
     const qtyPerDNBerjalan = {};
 
     Data.forEach((item) => {
+      console.log("disini perhitungan", Data, item);
       const dn = item.dn_number;
       const cycle = item.delivery_cycle || "1";
-      const job = item?.[uniqueColumn[0]];
+      const job = item?.customer_material;
       const key = `${dn},${job}`;
+      console.log(key, job);
       const orderQty = Number(item[`order_(pcs)`]);
       const unitQty = Number(item.qty);
       const totalQty = Math.round(orderQty / unitQty);
@@ -1232,7 +1264,7 @@ export default function InputSmart() {
       const status = sisa === 0 ? "Closed" : "Open";
 
       summaryTableNoKanban.push({
-        dn_number: key,
+        dn_number: job,
         jumlah_order: jumlahQTY[key],
         total,
         sisa,
@@ -1319,7 +1351,8 @@ export default function InputSmart() {
       row,
       summary.comboToDNMap,
       summary.dnMap,
-      summary.comboToMaterialMap
+      summary.comboToMaterialMap,
+      summary.selectedDataMap
       // dataReal
       // startDate,
       // endDate,
@@ -1665,9 +1698,7 @@ export default function InputSmart() {
       cycleFilter,
       Data.filter(
         (item) =>
-          !cycleFilter ||
-          item.delivery_cycle === String(cycleFilter) ||
-          item.delivery_cycle === cycleFilter
+          !cycleFilter || String(item.delivery_cycle) === String(cycleFilter)
       )
     );
     const filteredDN = Array.from(
@@ -1748,8 +1779,7 @@ export default function InputSmart() {
                       Data.filter(
                         (item) =>
                           !cycleFilter ||
-                          item.delivery_cycle === String(cycleFilter) ||
-                          item.delivery_cycle === cycleFilter
+                          String(item.delivery_cycle) === String(cycleFilter)
                       ).map((d) => d.dn_number)
                     )
                   )
@@ -2045,7 +2075,7 @@ export default function InputSmart() {
                   {summaryTable.map((row, i) => (
                     <tr key={i}>
                       <td className="border px-2 py-1">
-                        {row?.dn_number.split(",")[1]}
+                        {row?.dn_number.split(",")[0]}
                       </td>
                       <td className="border px-2 py-1">{row.jumlah_order}</td>
                       <td className="border px-2 py-1">{row.total}</td>

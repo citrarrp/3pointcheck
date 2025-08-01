@@ -215,8 +215,8 @@ export default function PageUniqueMaterial() {
   // );
 
   function getPrefixOnly(code) {
-    const match = code.match(/^([A-Z]+)/);
-    return match ? match[1] : "";
+    const Match = code.match(/^([A-Z]+)/);
+    return Match ? Match[1] : "";
   }
   const uniqueMaterialCustomer = [];
   const seen = new Set();
@@ -263,7 +263,7 @@ export default function PageUniqueMaterial() {
                       </div>
                       <div className="flex-1">
                         <h3 className="text-lg font-bold text-blue-700 mb-1">
-                          {tag.part_name || tag.material_description}
+                          {tag.part_name || tag.material_description.trim()}
                         </h3>
                         <p className="text-sm text-gray-500 ">
                           {tag.part_no || tag.material}

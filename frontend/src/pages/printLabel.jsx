@@ -239,8 +239,8 @@ export default function PrintLabel() {
   }, [dataMaterial, uniqueCode]);
 
   function getPrefixOnly(code) {
-    const match = code.match(/^([A-Z]+)/);
-    return match ? match[1] : "";
+    const Match = code.match(/^([A-Z]+)/);
+    return Match ? Match[1] : "";
   }
   // const filteredData = kolomData.flatMap((item) =>
   //   item.data

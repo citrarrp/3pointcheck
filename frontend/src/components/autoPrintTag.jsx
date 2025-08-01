@@ -173,7 +173,7 @@ const TagMTM = ({
         <div className="flex-shrink-0">
           <QRCode
             value={`${dataCust[0]?.selectedData}|${
-              dataCust[0]?.qty || 0
+              dataPart[0]?.qtyKanban || dataCust[0]?.qty || 0
             }|${moment(date).format("DDMMYYYY")}`}
             size={58}
             level="H"
@@ -200,7 +200,9 @@ const TagMTM = ({
           />
           <div className="font-bold text-center items-center mt-1 flex flex-row justify-between gap-1">
             <div className="text-[12px]">QTY :</div>
-            <div className="text-[20px]">{dataCust[0]?.qty || 0}</div>
+            <div className="text-[20px]">
+              {dataPart[0]?.qtyKanban || dataCust[0]?.qty || 0}
+            </div>
           </div>
         </div>
       </div>
@@ -244,7 +246,10 @@ const TagMTM = ({
           />
           <div className="font-bold text-center items-center mt-1 flex flex-row justify-between gap-1">
             <div className="text-[14px]">QTY :</div>
-            <div className="text-[22px]">{dataCust[0]?.qty || 0}</div>
+            <div className="text-[22px]">
+              {" "}
+              {dataPart[0]?.qtyKanban || dataCust[0]?.qty || 0}
+            </div>
           </div>
         </div>
       </div>

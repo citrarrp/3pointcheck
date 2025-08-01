@@ -11,21 +11,32 @@ const MaterialUpload = () => {
   const [fileName, setFileName] = useState("");
 
   const fieldMapping = {
-    "Sales Organization": "sales_organization",
-    "Distribution Channel": "distribution_channel",
+    // "Sales Organization": "sales_organization",
+    // "Distribution Channel": "distribution_channel",
     Customer: "customer",
-    Material: "material",
-    "Created By": "created_by",
-    "Created on": "created_on",
-    "Customer Material Number": "customer_material",
-    "Customer's Description of Material": "customer_material_description",
-    "Minimum Delivery Qty": "minimum_delivery_qty",
-    "Base Unit of Measure": "base_unit_of_measure",
-    "SAP Number": "sap_number",
-    Description: "material_description",
+    Product: "material",
+    // "Created By": "created_by",
+    // "Created on": "created_on",
+    "Customer Number": "customer_material",
+    Unique: "unique",
+    // "Customer's Description of Material": "customer_material_description",
+    // "Minimum Delivery Qty": "minimum_delivery_qty",
+    // "Base Unit of Measure": "base_unit_of_measure",
+    // "SAP Number": "sap_number",
+    "Qty/Kanban": "qtyKanban",
+    "Job Number": "job_no",
+    // Description: "material_description",
+    "Product Desc": "material_description",
     Line: "line",
-    "Customer Description": "customer_description",
+    Customer2: "customer_description",
   };
+
+  const cleanKey = (key) =>
+    key
+      .replace(/[\r\n]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
   const handleFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -43,13 +54,23 @@ const MaterialUpload = () => {
       // Mapping header ke field MongoDB
       const mappedData = rawData.map((row) => {
         const mappedRow = {};
-        for (const [excelKey, mongoKey] of Object.entries(fieldMapping)) {
-          if (excelKey === "Created on") {
-            mappedRow[mongoKey] = new Date(row[excelKey]);
-          } else if (excelKey === "Minimum Delivery Qty") {
-            mappedRow[mongoKey] = Number(row[excelKey]) || 0;
+        for (const rawKey in row) {
+          const normalizedKey = cleanKey(rawKey);
+          const mongoKey = fieldMapping[normalizedKey];
+
+          if (!mongoKey) continue;
+
+          // for (const [excelKey, mongoKey] of Object.entries(fieldMapping)) {
+
+          if (normalizedKey === "Created on") {
+            mappedRow[mongoKey] = isNaN(new Date(row[rawKey]).getTime())
+              ? new Date()
+              : new Date(row[rawKey]);
+          } else if (normalizedKey === "Qty/Kanban") {
+            console.log(row[rawKey], "contoh isi number");
+            mappedRow[mongoKey] = Number(row[rawKey]) || 0;
           } else {
-            mappedRow[mongoKey] = row[excelKey] || "-";
+            mappedRow[mongoKey] = row[rawKey];
           }
         }
         return mappedRow;

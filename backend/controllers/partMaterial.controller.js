@@ -83,8 +83,8 @@ export const createMaterial = async (req, res) => {
   }
 
   const requiredFields = [
-    "sales_organization",
-    "distribution_channel",
+    // "sales_organization",
+    // "distribution_channel",
     "customer",
     "material",
   ];
@@ -99,12 +99,15 @@ export const createMaterial = async (req, res) => {
     });
   }
 
+  console.log(data, data.qtyKanban, "dataa baru");
+
   try {
     const filter = {
-      sales_organization: data.sales_organization,
-      distribution_channel: data.distribution_channel,
+      // sales_organization: data.sales_organization,
+      // distribution_channel: data.distribution_channel,
       customer: data.customer,
       material: data.material,
+      customer_material: data.customer_material,
     };
 
     const options = {
@@ -115,15 +118,17 @@ export const createMaterial = async (req, res) => {
 
     const result = await materialCustomer.findOneAndUpdate(
       filter,
-      data,
+      {
+        ...data,
+        line:
+          !data.line?.trim() || data.line.trim() === "-" ? "N.A" : data.line,
+      },
       options
     );
 
     return res.status(200).json({
       success: true,
-      message: result.isNew
-        ? "Data baru berhasil disimpan!"
-        : "Data berhasil diperbarui!",
+      message: "Data berhasil disimpan!",
       data: result,
     });
   } catch (error) {
@@ -160,7 +165,7 @@ export const updateCustomerMaterialDesc = async (req, res) => {
     // "sales_organization",
     // "distribution_channel",
     "customer",
-    "sap_number",
+    "material",
     "customer_material",
     // "material_description",
   ];
@@ -174,48 +179,26 @@ export const updateCustomerMaterialDesc = async (req, res) => {
     });
   }
 
-  function normalizeCustomerMaterial(code) {
-    const match = code.match(/^([A-Z]{3,4})0([1-9]\d*)00([1-9]\d*)$/);
-    if (!match) return code;
-
-    const prefix = match[1]; // e.g. "ADM"
-    const angka1 = match[2]; // e.g. "15"
-    const angka2 = match[3]; // e.g. "1"
-
-    return `${prefix}0${angka2}00${angka1}`;
-  }
-
   try {
-    const normalized = normalizeCustomerMaterial(data.customer);
+    // const normalized = normalizeCustomerMaterial(data.customer);
 
     const filter = {
-      // sales_organization: data?.sales_organization,
-      // distribution_channel: data?.distribution_channel,
       customer: data.customer,
-      sap_number: data.sap_number,
-      // material: data.sap_number,
+      // sap_number: data.sap_number,
+      material: data.material,
       customer_material: data.customer_material,
-      // material_description: data.material_description,
     };
 
-    console.log(data.customer, normalized, "contoh customer");
+    // console.log(data.customer, normalized, "contoh customer");
     let existing = await materialCustomer.findOne(filter);
-
-    if (!existing) {
-      console.log(
-        "Tidak ditemukan, coba ulang pakai fallback normalized customer"
-      );
-
-      filter.customer = normalized;
-      existing = await materialCustomer.findOne(filter);
-    }
 
     if (!existing) {
       // console.log(data, "data baru");
       const newData = new materialCustomer({
         ...data,
-        material: data.sap_number,
-        line: data.line === "-" ? "N/A" : data.line,
+        material: data.material,
+        // sap_number: data.material,
+        line: data.line === "-" || !data.line ? "N.A" : data.line,
       });
 
       await newData.save();
@@ -225,24 +208,12 @@ export const updateCustomerMaterialDesc = async (req, res) => {
         message: "Data baru berhasil ditambahkan!",
         data: newData,
       });
-    }
-    // const update = {
-    //   $set: {
-    //     customer_description: data.customer_description,
-    //     line: data.line,
-    //   },
-    //   $setOnInsert: {
-    //     material: data.material,
-    //     sap_number: data.sap_number,
-    //     customer_material: data.customer_material,
-    //     material_description: data.material_description,
-    //   },
-    // };
-    else {
+    } else {
       console.log("buruh update");
       const needsUpdate =
         !existing.line?.trim() ||
         existing.line === "-" ||
+        existing.line === "N.A" ||
         !existing.customer_description?.trim() ||
         existing.customer_description === "-";
 
@@ -253,7 +224,7 @@ export const updateCustomerMaterialDesc = async (req, res) => {
           data: existing,
         });
       }
-      existing.line = (data.line === "-" ? "N/A" : data.line) || existing.line;
+      existing.line = (data.line === "-" ? "N.A" : data.line) || existing.line;
       existing.customer_description =
         data.customer_description || existing.customer_description;
 
@@ -265,26 +236,6 @@ export const updateCustomerMaterialDesc = async (req, res) => {
         data: existing,
       });
     }
-
-    // const options = {
-    //   upsert: true,
-    //   new: true,
-    //   setDefaultsOnInsert: true,
-    // };
-
-    // const result = await materialCustomer.findOneAndUpdate(
-    //   filter,
-    //   update,
-    //   options
-    // );
-
-    // res.status(200).json({
-    //   success: true,
-    //   message: result.isNew
-    //     ? "Data baru berhasil ditambahkan!"
-    //     : "Data berhasil diperbarui!",
-    //   data: result,
-    // });
   } catch (error) {
     console.error("Error updating customer material:", error.message);
 
