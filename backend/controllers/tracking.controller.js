@@ -28,9 +28,9 @@ export const updatePrepareDatabyDNCustCycle = async (req, res) => {
       "jumlah",
       "request"
     );
-    if (!customerId || !tanggal || !dnNumber) {
+    if (!customerId || !tanggal) {
       return res.status(400).json({
-        message: "customerId, tanggal, dan dnNumber harus diisi",
+        message: "customerId, tanggal harus diisi",
       });
     }
 
@@ -39,17 +39,23 @@ export const updatePrepareDatabyDNCustCycle = async (req, res) => {
       .startOf("day")
       .toDate();
     const endOfDay = moment.tz(tanggal, "Asia/Jakarta").endOf("day").toDate();
-
-    const existingData = await trackingDelv.findOne({
+    const queryBase = {
       customerId,
       tanggal: {
         $gte: startOfDay,
         $lt: endOfDay,
       },
-      dnNumber,
+    };
+    if (dnNumber) {
+      queryBase.dnNumber = dnNumber;
+    }
+
+    const existingData = await trackingDelv.findOne({
+      ...queryBase,
       nama: "Inspection",
     });
 
+    console.log(existingData, "Ada");
     if (!existingData) {
       return res.status(404).json({
         message: "Data tidak ditemukan",
@@ -94,7 +100,7 @@ export const updatePrepareDatabyDNCustCycle = async (req, res) => {
       // Generate verification code
       const payload = {
         customerId,
-        dnNumber,
+        dnNumber: dnNumber || "",
         tanggal: moment.tz(tanggal, "Asia/Jakarta").toDate(),
         timestamp: new Date().toISOString(),
       };
@@ -133,14 +139,9 @@ export const updatePrepareDatabyDNCustCycle = async (req, res) => {
       qty,
     };
 
-    await trackingDelv.findOneAndUpdate(
+    await trackingDelv.updateMany(
       {
-        customerId,
-        tanggal: {
-          $gte: startOfDay,
-          $lt: endOfDay,
-        },
-        dnNumber,
+        ...queryBase,
         nama:
           status === "done"
             ? "Inspection"
@@ -157,15 +158,12 @@ export const updatePrepareDatabyDNCustCycle = async (req, res) => {
     );
 
     if (status === "first") {
+      console.log("sini 1");
       await trackingDelv.updateMany(
         {
-          customerId,
-          tanggal: {
-            $gte: startOfDay,
-            $lt: endOfDay,
-          },
+          ...queryBase,
           nama: "Inspection",
-          dnNumber,
+
           $or: [
             { verificationCode: null },
             { verificationCode: { $exists: false } },
@@ -180,11 +178,7 @@ export const updatePrepareDatabyDNCustCycle = async (req, res) => {
     if (status === "-") {
       await trackingDelv.updateMany(
         {
-          customerId,
-          tanggal: {
-            $gte: startOfDay,
-            $lt: endOfDay,
-          },
+          ...queryBase,
           nama: {
             $in: [
               "Finish Preparation",
@@ -192,21 +186,16 @@ export const updatePrepareDatabyDNCustCycle = async (req, res) => {
               "Start Preparation (Pulling)",
             ],
           },
-          dnNumber,
         },
         { $set: { qty } }
       );
     }
 
     if (status == "done" && sudahAll) {
-      await trackingDelv.findOneAndUpdate(
+      console.log("kesini");
+      await trackingDelv.updateMany(
         {
-          customerId,
-          tanggal: {
-            $gte: startOfDay,
-            $lt: endOfDay,
-          },
-          dnNumber,
+          ...queryBase,
           nama: "Inspection",
           $or: [
             { verificationCode: null },
@@ -228,17 +217,12 @@ export const updatePrepareDatabyDNCustCycle = async (req, res) => {
 
     const response = {
       message: "Data berhasil diupdate",
-      data: dnNumber,
+      data: dnNumber || "",
     };
 
     // if (status == "done") {
     const existing = await trackingDelv.findOne({
-      customerId,
-      tanggal: {
-        $gte: startOfDay,
-        $lt: endOfDay,
-      },
-      dnNumber,
+      ...queryBase,
       nama: "Inspection",
       verificationCode: { $ne: null },
       shift: { $ne: null },
@@ -253,7 +237,7 @@ export const updatePrepareDatabyDNCustCycle = async (req, res) => {
     } else {
       // console.log("Verification code", verificationCode, dnNumber);
       response.verificationCode = null;
-      console.log("dn", dnNumber);
+      console.log("dn");
     }
     // }
     return res.status(200).json(response);
@@ -282,13 +266,19 @@ export const postInspection = async (req, res) => {
       .toDate();
     const endOfDay = moment.tz(tanggal, "Asia/Jakarta").endOf("day").toDate();
 
-    const existingData = await trackingDelv.find({
+    const queryBase = {
       customerId,
       tanggal: {
         $gte: startOfDay,
         $lt: endOfDay,
       },
-      dnNumber,
+    };
+    if (dnNumber) {
+      queryBase.dnNumber = dnNumber;
+    }
+
+    const existingData = await trackingDelv.find({
+      ...queryBase,
       nama: "Inspection",
     });
 
@@ -300,12 +290,7 @@ export const postInspection = async (req, res) => {
 
     await trackingDelv.updateMany(
       {
-        customerId,
-        tanggal: {
-          $gte: startOfDay,
-          $lt: endOfDay,
-        },
-        dnNumber,
+        ...queryBase,
         nama: "Finish Preparation",
       },
       { $set: { verificationCode: codeOD } },

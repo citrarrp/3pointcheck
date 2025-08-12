@@ -475,37 +475,51 @@ function Excel() {
 
         const formatValue = (val) => {
           if (val instanceof Date && !isNaN(val)) {
-            return moment(val).tz("Asia/Jakarta");
+            // return moment(val).tz("Asia/Jakarta");
+            const utc = moment.utc(val); // interpretasi asli UTC dari Excel
+            const wib = utc.clone().tz("Asia/Jakarta");
+
+            // Kalau UTC-nya jam 16:00:00 atau lebih, anggap tanggung → geser ke hari berikutnya
+            if (utc.hour() >= 16) {
+              return wib
+                .add(1, "day")
+                .startOf("day")
+                .format("YYYY-MM-DD HH:mm:ss");
+            }
+
+            // Kalau nggak, cukup tampilkan sesuai WIB
+            return wib.format("YYYY-MM-DD HH:mm:ss");
           }
 
-          const parsedDate = moment.tz(
-            val,
-            [
-              "DD/MM/YYYY",
-              "MM/DD/YYYY",
-              "YYYY-MM-DD",
-              "D/M/YYYY",
-              "DD-MM-YYYY",
-              "D-M-YYYY",
-              "DD.MM.YYYY",
-              "DD.MM.YY",
-              "D.M.YY",
-              "D.M.YYYY",
-              "MMMM D, YYYY",
-              "D MMMM YYYY",
-              "D MMM YYYY",
-              moment.ISO_8601,
-            ],
+          const parsedNew = moment.tz(
+            "8/5/2025",
+            ["DD/MM/YYYY", "MM/DD/YYYY", "M/D/YYYY", "D/M/YYYY", "YYYY-MM-DD"],
             true,
             "Asia/Jakarta"
           );
-          // console.log(parsedDate, "tadikedini", parsedDate.isValid());
-          if (parsedDate.isValid()) {
-            // console.log(parsedDate.toDate() instanceof Date, "Date?");
-            return parsedDate.toDate();
-          }
 
-          return val;
+          console.log(parsedNew.format("YYYY-MM-DD HH:mm:ss"), "contoh nput");
+          const formats = [
+            "DD/MM/YYYY",
+            "MM/DD/YYYY",
+            "M/D/YYYY",
+            "D/M/YYYY",
+            "YYYY-MM-DD",
+            "DD-MM-YYYY",
+            "D-M-YYYY",
+            "DD.MM.YYYY",
+            "DD.MM.YY",
+            "D.M.YY",
+            "D.M.YYYY",
+            "MMMM D, YYYY",
+            "D MMMM YYYY",
+            "D MMM YYYY",
+            moment.ISO_8601,
+          ];
+          // console.log(parsedDate, "tadikedini", parsedDate.isValid());
+          const parsed = moment.tz(val, formats, true, "Asia/Jakarta");
+
+          return parsed.isValid() ? parsed : val;
         };
 
         const promises = Object.entries(groupedByCustomer).map(
@@ -892,36 +906,44 @@ function Excel() {
             // };
             const formatValue = (val) => {
               if (val instanceof Date && !isNaN(val)) {
-                return moment(val).tz("Asia/Jakarta");
+                //   return moment(val).tz("Asia/Jakarta");
+                // }
+                const utc = moment.utc(val); // interpretasi asli UTC dari Excel
+                const wib = utc.clone().tz("Asia/Jakarta");
+
+                // Kalau UTC-nya jam 16:00:00 atau lebih, anggap tanggung → geser ke hari berikutnya
+                if (utc.hour() >= 16) {
+                  return wib
+                    .add(1, "day")
+                    .startOf("day")
+                    .format("YYYY-MM-DD HH:mm:ss");
+                }
+
+                // Kalau nggak, cukup tampilkan sesuai WIB
+                return wib.format("YYYY-MM-DD HH:mm:ss");
               }
 
-              const parsedDate = moment.tz(
-                val,
-                [
-                  "DD/MM/YYYY",
-                  "YYYY-MM-DD",
-                  "D/M/YYYY",
-                  "DD-MM-YYYY",
-                  "D-M-YYYY",
-                  "DD.MM.YYYY",
-                  "DD.MM.YY",
-                  "D.M.YY",
-                  "D.M.YYYY",
-                  "MMMM D, YYYY",
-                  "D MMMM YYYY",
-                  "D MMM YYYY",
-                  moment.ISO_8601,
-                ],
-                true,
-                "Asia/Jakarta"
-              );
+              const formats = [
+                "DD/MM/YYYY",
+                "MM/DD/YYYY",
+                "M/D/YYYY",
+                "D/M/YYYY",
+                "YYYY-MM-DD",
+                "DD-MM-YYYY",
+                "D-M-YYYY",
+                "DD.MM.YYYY",
+                "DD.MM.YY",
+                "D.M.YY",
+                "D.M.YYYY",
+                "MMMM D, YYYY",
+                "D MMMM YYYY",
+                "D MMM YYYY",
+                moment.ISO_8601,
+              ];
               // console.log(parsedDate, "tadikedini", parsedDate.isValid());
-              if (parsedDate.isValid()) {
-                // console.log(parsedDate.toDate() instanceof Date, "Date?");
-                return parsedDate.toDate();
-              }
+              const parsed = moment.tz(val, formats, true, "Asia/Jakarta");
 
-              return val;
+              return parsed.isValid() ? parsed : val;
             };
 
             // const selectedData = filteredData

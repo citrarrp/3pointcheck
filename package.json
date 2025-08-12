@@ -118,6 +118,7 @@
     "sparse-bitfield": "^3.0.3",
     "ssf": "^0.11.2",
     "statuses": "^2.0.1",
+    "sunmi-js-sdk": "^1.0.49",
     "supports-color": "^5.5.0",
     "swr": "^2.3.3",
     "to-regex-range": "^5.0.1",

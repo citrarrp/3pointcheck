@@ -15,6 +15,7 @@ import { AuthContext } from "../context/auth";
 import DatePicker from "react-datepicker";
 import html2canvas from "html2canvas";
 import IminPrinter from "../assets/imin-printer.esm.browser.js";
+import SUNMI from "sunmi-js-sdk";
 
 const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
   const [shouldPrint, setShouldPrint] = useState(false);
@@ -101,63 +102,192 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
     removeAfterPrint: true,
   });
 
-  const handlePrint = async () => {
-    console.log("masuk");
-    // if (!printer || !isConnected) return;
+  const sunmi = new SUNMI();
+  const imin = new IminPrinter();
 
-    const content = printDiv.current.innerHTML;
+  // const handlePrint = async () => {
+  //   console.log("masuk");
 
-    if (
-      window.IminPrinterPlugin &&
-      typeof window.IminPrinterPlugin.printText === "function"
-    ) {
-      window.IminPrinterPlugin.printText(content);
-    } else {
-      // await printer.setFontSize(0); // default
-      // await printer.printText("Hello Imin Printer\n");
-      // await printer.printText(content);
-      // await printer.printAndFeed(3);
-      // await printer.cutPaper();
+  //   sunmi.launchPrinterService().then(() => {
+  //     console.log("Service printer dibuka");
+  //   });
+  //   sunmi.init();
 
-      if (!printDiv.current) return;
-      // const canvas = await html2canvas(printDiv.current, { scale: 0.95 });
-      // const imgData = canvas.toDataURL("image/png");
-      const canvas = await html2canvas(printDiv.current, {
-        scale: 2,
-      });
+  //   if (sunmi.printer) {
+  //     const canvas = await html2canvas(printDiv.current, {
+  //       scale: 2,
+  //     });
 
-      const imgData = canvas.toDataURL("image/png", 1.0);
+  //     const dataUrl = canvas.toDataURL("image/png", 1.0);
 
-      const html = printDiv.current.outerHTML;
-      setIsPrinting(true); // bisa memicu style visibility
+  //     const img = new Image();
+  //     img.src = dataUrl;
+  //     img.onload = async () => {
+  //       try {
+  //         await sunmi.lineApi.initLine({ fontSize: 24 });
+  //         await sunmi.lineApi.addBitmap(img, { align: "center" });
+  //         await sunmi.lineApi.feedLine(3); // kasih jarak bawah
+  //         await sunmi.lineApi.printLine();
+  //         console.log("Cetak selesai!");
+  //       } catch (err) {
+  //         console.error("Gagal cetak:", err);
+  //       }
+  //     };
+  //   } else {
 
-      // try {
-      //   await api.post("/print-tag", { image: imgData });
-      // } catch (err) {
-      //   console.error("Gagal print:", err);
-      //   alert("Gagal print");
-      // reactToPrintFn();
-      const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  //     if (!printDiv.current) return;
+  //     // const canvas = await html2canvas(printDiv.current, { scale: 0.95 });
+  //     // const imgData = canvas.toDataURL("image/png");
+  //     const canvas = await html2canvas(printDiv.current, {
+  //       scale: 2,
+  //     });
 
-      await delay(300); // tunggu visibility & render selesai
+  //     const imgData = canvas.toDataURL("image/png", 1.0);
 
-      // await delay(500); // tunggu dulu setengah detik
-      reactToPrintFn();
+  //     const html = printDiv.current.outerHTML;
+  //     setIsPrinting(true); // bisa memicu style visibility
 
-      setIsPrinting(false);
+  //     // try {
+  //     //   await api.post("/print-tag", { image: imgData });
+  //     // } catch (err) {
+  //     //   console.error("Gagal print:", err);
+  //     //   alert("Gagal print");
+  //     // reactToPrintFn();
+  //     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  //     await delay(300); // tunggu visibility & render selesai
+
+  //     // await delay(500); // tunggu dulu setengah detik
+  //     reactToPrintFn();
+
+  //     setIsPrinting(false);
+  //   }
+
+  // const canvas = await html2canvas(element, {
+  //   scale: 2, // resolusi lebih tajam
+  //   backgroundColor: "#fff", // penting untuk hasil thermal
+  // });
+
+  // const image = canvas.toDataURL("image/png");
+
+  // const win = window.open();
+  // win.document.write(
+  //   `<img src="${imgData}" onload="window.print(); window.close()" />`
+  // );
+  // };
+  const fallbackWebPrint = async () => {
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    setIsPrinting(true);
+    console.log("kesini");
+    await delay(300);
+    reactToPrintFn();
+    setIsPrinting(false);
+  };
+
+  const handlePrintUniversal = async (options = {}) => {
+    const {
+      paperSize = "58mm", // "58mm" atau "80mm"
+      rotate = false, // hanya untuk iMin
+      multi = false, // hanya untuk iMin
+      customType = 0, // hanya untuk Sunmi: 0=normal, 1=BW, 2=grayscale
+    } = options;
+
+    const paperWidthPx = paperSize === "58mm" ? 384 : 576;
+
+    if (!printDiv.current) {
+      console.warn("printDiv ref tidak ditemukan!");
+      return;
     }
 
-    // const canvas = await html2canvas(element, {
-    //   scale: 2, // resolusi lebih tajam
-    //   backgroundColor: "#fff", // penting untuk hasil thermal
-    // });
+    // Ambil screenshot elemen HTML
+    let canvas = await html2canvas(printDiv.current, { scale: 2 });
 
-    // const image = canvas.toDataURL("image/png");
+    // Resize ke lebar kertas
+    if (canvas.width !== paperWidthPx) {
+      const resizedCanvas = document.createElement("canvas");
+      const ctx = resizedCanvas.getContext("2d");
+      const scaleFactor = paperWidthPx / canvas.width;
+      resizedCanvas.width = paperWidthPx;
+      resizedCanvas.height = canvas.height * scaleFactor;
+      ctx.drawImage(canvas, 0, 0, resizedCanvas.width, resizedCanvas.height);
+      canvas = resizedCanvas;
+    }
 
-    // const win = window.open();
-    // win.document.write(
-    //   `<img src="${imgData}" onload="window.print(); window.close()" />`
-    // );
+    // Rotasi 90° jika diminta (hanya iMin)
+    if (rotate && imin) {
+      const rotatedCanvas = document.createElement("canvas");
+      const ctx = rotatedCanvas.getContext("2d");
+      rotatedCanvas.width = canvas.height;
+      rotatedCanvas.height = canvas.width;
+      ctx.translate(rotatedCanvas.width / 2, rotatedCanvas.height / 2);
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
+      canvas = rotatedCanvas;
+    }
+
+    // Data URL untuk cetak
+    const dataUrl = canvas.toDataURL("image/png", 1.0);
+
+    try {
+      // Cek koneksi & status iMin
+      if (imin) {
+        const connected = await imin.connect();
+        if (!connected) throw new Error("Tidak bisa konek ke iMin printer");
+
+        const status = await imin.getStatus();
+        console.log("Status iMin:", status);
+
+        if (status !== 0) {
+          console.warn("iMin tidak siap, fallback web print");
+          return fallbackWebPrint();
+        }
+
+        await imin.initPrinter();
+        if (multi && Array.isArray(dataUrl)) {
+          await imin.printMultiBitmap(dataUrl, 1); // 1=center
+        } else {
+          await imin.printSingleBitmap(dataUrl, 1);
+        }
+        console.log("Cetak iMin selesai!");
+        return;
+      }
+
+      // Cek koneksi & status Sunmi
+      if (sunmi) {
+        await sunmi.launchPrinterService();
+        console.log("Service printer Sunmi dibuka");
+        sunmi.init();
+
+        const status = await sunmi.printer.getStatus();
+        console.log("Status Sunmi:", status);
+
+        if (status !== 1 && status !== 2) {
+          console.warn("Sunmi tidak siap, fallback web print");
+          return fallbackWebPrint();
+        }
+
+        const img = new Image();
+        img.src = dataUrl;
+        img.onload = async () => {
+          try {
+            await sunmi.printer.printBitmapCustom(img, customType, (res) => {
+              console.log("Hasil print Sunmi:", res);
+            });
+          } catch (err) {
+            console.error("Gagal cetak Sunmi:", err);
+            fallbackWebPrint();
+          }
+        };
+        return;
+      }
+
+      // Kalau tidak ada printer instance
+      console.warn("Tidak ada printer instance, fallback web print");
+      fallbackWebPrint();
+    } catch (err) {
+      console.error("Error saat cetak:", err);
+      fallbackWebPrint();
+    }
   };
 
   // const handlePrint = () => {
@@ -272,7 +402,7 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
 
   useEffect(() => {
     if (shouldPrint) {
-      handlePrint();
+      handlePrintUniversal();
       setShouldPrint(false);
     }
   }, [shouldPrint]);

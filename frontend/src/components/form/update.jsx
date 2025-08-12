@@ -455,6 +455,124 @@ function UpdateForm() {
       .trim();
   };
 
+  function convertTo24HFormat(timeStr) {
+    const [time, modifier] = timeStr.trim().split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+
+    if (modifier.toLowerCase() === "pm" && hours < 12) hours += 12;
+    if (modifier.toLowerCase() === "am" && hours === 12) hours = 0;
+
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
+      2,
+      "0"
+    )}:00`;
+  }
+
+  function normalizeDeliveryTime(timeRaw) {
+    if (!timeRaw) return null;
+
+    console.log(timeRaw, typeof timeRaw, "ini time");
+
+    if (typeof timeRaw === "string") {
+      // Jika AM/PM format
+      if (
+        timeRaw.toLowerCase().includes("am") ||
+        timeRaw.toLowerCase().includes("pm")
+      ) {
+        return convertTo24HFormat(timeRaw); // hasil "HH:MM:SS"
+      }
+
+      // Jika format ISO atau 24-jam langsung ambil jam-menit-detiknya
+      const date = new Date(timeRaw);
+      if (!isNaN(date)) {
+        return date.toTimeString().slice(0, 8); // "HH:MM:SS"
+      }
+
+      // Jika format "09:09" atau "09:09:00"
+      const match = timeRaw.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+      if (match) {
+        const [_, h, m, s = "00"] = match;
+        return `${String(h).padStart(2, "0")}:${m}:${s}`;
+      }
+    } else {
+      const date = timeRaw instanceof Date ? timeRaw : new Date(timeRaw);
+
+      const hours = String(date.getHours()).padStart(2, "0");
+      const minutes = String(date.getMinutes()).padStart(2, "0");
+      const seconds = String(date.getSeconds()).padStart(2, "0");
+
+      return `${hours}:${minutes}:${seconds}`;
+    }
+
+    return timeRaw;
+  }
+
+  function waktuWIBToUTCISOString(timeStrWIB) {
+    // Misal: timeStrWIB = "07:52:00"
+    if (!(timeStrWIB instanceof Date)) timeStrWIB = new Date(timeStrWIB);
+    if (isNaN(timeStrWIB)) return null;
+
+    const hours = timeStrWIB.getHours().toString().padStart(2, "0");
+    const minutes = timeStrWIB.getMinutes().toString().padStart(2, "0");
+    const seconds = timeStrWIB.getSeconds().toString().padStart(2, "0");
+
+    // const [hh, mm, ss] = timeStrWIB.split(":").map(Number);
+    const date = new Date(Date.UTC(1970, 0, 1, hours, minutes, seconds || 0)); // 07:52 UTC
+
+    date.setUTCHours(date.getUTCHours() - 7);
+
+    return date.toISOString(); // Ini hasil UTC yang mewakili 07:52 WIB
+  }
+
+  function getSecondsSinceMidnight(dateStrOrObj) {
+    const date =
+      typeof dateStrOrObj === "string" ? new Date(dateStrOrObj) : dateStrOrObj;
+    return (
+      date.getUTCHours() * 3600 +
+      date.getUTCMinutes() * 60 +
+      date.getUTCSeconds()
+    );
+  }
+
+  function findClosestCycle(deliveryTime, dataSOD, customerName) {
+    if (!deliveryTime || !dataSOD || !customerName) return null;
+
+    const targetTime = new Date(`1970-01-01T${deliveryTime}`);
+    let closest = null;
+
+    const targetSeconds = getSecondsSinceMidnight(targetTime);
+
+    dataSOD
+      .filter(
+        (item) =>
+          item.customerName.toLowerCase().trim() ===
+            customerName.toLowerCase().trim() &&
+          item.processName.toLowerCase() === "truck out"
+      )
+      .forEach((item) => {
+        console.log(item.waktu, "contoh");
+        const waktuUntukSubmit = waktuWIBToUTCISOString(item.waktu);
+        const sodTime = new Date(waktuUntukSubmit);
+
+        const sodSeconds = getSecondsSinceMidnight(sodTime);
+        console.log(
+          waktuUntukSubmit,
+          sodTime,
+          sodSeconds,
+          "INI SEMUA PENTINH",
+          targetTime,
+          deliveryTime
+        );
+        if (sodSeconds <= targetSeconds) {
+          const diff = Math.abs(targetSeconds - sodSeconds);
+          if (!closest || diff < closest.diff) {
+            closest = { cycle: item.cycle, diff };
+          }
+        }
+      });
+    return closest?.cycle ?? 1;
+  }
+
   useEffect(() => {
     console.log("keisi", excelData, dbCustomers);
     if (excelData.length === 0 || dbCustomers.length === 0) return;
@@ -553,7 +671,10 @@ function UpdateForm() {
         const parsedDate = moment.tz(
           val,
           [
+            "M/D/YYYY",
+            "D/M/YYYY",
             "DD/MM/YYYY",
+            "MM/DD/YYYY",
             "YYYY-MM-DD",
             "D/M/YYYY",
             "DD-MM-YYYY",
@@ -570,9 +691,9 @@ function UpdateForm() {
           true,
           "Asia/Jakarta"
         );
-        // console.log(parsedDate, "tadikedini", parsedDate.isValid());
+        console.log(parsedDate, "tadikedini", parsedDate.isValid());
         if (parsedDate.isValid()) {
-          // console.log(parsedDate.toDate() instanceof Date, "Date?");
+          console.log(parsedDate.toDate() instanceof Date, "Date?");
           return parsedDate.toDate();
         }
 
@@ -641,37 +762,72 @@ function UpdateForm() {
             return values.join(separator ?? "");
           });
 
-          const KolomSelected = excelData.map((row) =>
-            Object.entries(mapping).reduce((acc, [schema, excelCol]) => {
-              if (!Object.hasOwn(mapping, "delivery_cycle")) {
-                acc["delivery_cycle"] = 1;
-              }
-              let val = row[excelCol] ?? null;
-              if (typeof val === "string" && val.includes(":")) {
-                val = val.split(":")[1]?.trim() ?? val;
-              }
-              acc[schema] = extractColon(val);
-
-              if (schema === "delivery_date" || schema === "order_date") {
-                console.log(typeof val, val);
-                console.log(formatValue(val));
-                acc[schema] = formatValue(val); // hanya format di sini
-              }
-              if (schema === "order_delivery") {
-                const match = acc[schema].match(/OD\s+([A-Z0-9]+)/i);
-                if (match) {
-                  acc[schema] = match[1];
-                } else {
-                  acc[schema] = acc[schema]
-                    .trim()
-                    .split(" ")
-                    .pop()
-                    .replace(/\W+$/, "");
+          const KolomSelected = excelData.map((row) => {
+            const obj = Object.entries(mapping).reduce(
+              (acc, [schema, excelCol]) => {
+                if (!Object.hasOwn(mapping, "delivery_cycle")) {
+                  acc["delivery_cycle"] = 1;
                 }
-              }
-              return acc;
-            }, {})
-          );
+                let val = row[excelCol] ?? null;
+                if (typeof val === "string" && val.includes(":")) {
+                  val = val.split(":")[1]?.trim() ?? val;
+                }
+                acc[schema] = extractColon(val);
+
+                if (schema === "delivery_date" || schema === "order_date") {
+                  console.log(typeof val, val);
+                  console.log(formatValue(val));
+                  acc[schema] = formatValue(val); // hanya format di sini
+                }
+                if (schema === "order_delivery") {
+                  const match = acc[schema].match(/OD\s+([A-Z0-9]+)/i);
+                  if (match) {
+                    acc[schema] = match[1];
+                  } else {
+                    acc[schema] = acc[schema]
+                      .trim()
+                      .split(" ")
+                      .pop()
+                      .replace(/\W+$/, "");
+                  }
+                }
+                return acc;
+              },
+              {}
+            );
+
+            let cleaned = String(obj["delivery_cycle"]).replace(/[^\d]/g, "");
+
+            let cycleVal =
+              cleaned !== "" && !isNaN(cleaned) ? parseInt(cleaned) : 1;
+
+            if (!cycleVal && obj["delivery_time"]) {
+              console.log("masuk sini");
+              const timeRaw = obj["delivery_time"];
+              const deliveryTime = normalizeDeliveryTime(timeRaw);
+
+              const matchedCycle = findClosestCycle(
+                deliveryTime,
+                stepCycle,
+                customer
+              );
+
+              cycleVal = matchedCycle ?? 1;
+            }
+
+            obj["delivery_cycle"] = cycleVal;
+            const qty = parseFloat(obj["qty"]);
+            obj["qty"] = parseInt(obj["qty"]);
+            const orderPcs = parseFloat(obj["order_(pcs)"]);
+            obj["order_(pcs)"] = parseInt(obj["order_(pcs)"]);
+
+            obj["qtyKanban"] =
+              !isNaN(qty) && qty !== 0 && !isNaN(orderPcs)
+                ? Math.round(orderPcs / qty)
+                : 1;
+
+            return obj;
+          });
 
           const tomorrow = new Date();
           tomorrow.setDate(tomorrow.getDate() + 1);

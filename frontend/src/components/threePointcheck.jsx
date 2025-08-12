@@ -166,7 +166,12 @@ export default function InputSmart() {
 
         // currentProgressMap.set(comboKey, { qty: 0, qtyKanban: 0 }); // Set awal
         comboToMaterialMap.set(comboKey, item.material); // tergantung field material
-        selectedDataMap.set(comboKey, item.selectedData);
+
+        if (kanban) {
+          selectedDataMap.set(comboKey, item.selectedData);
+        } else {
+          selectedDataMap.set(comboKey, item.customer_material);
+        }
 
         if (!comboFieldMap.has(comboKey)) {
           comboFieldMap.set(comboKey, { qty: 0, qtyKanban: qty });
@@ -208,6 +213,7 @@ export default function InputSmart() {
         jumlahOrderComboField,
         jumlahOrderDNMap,
         comboToMaterialMap,
+        selectedDataMap,
         "ini infonya"
       );
       return {
@@ -225,7 +231,7 @@ export default function InputSmart() {
         selectedDataMap,
       };
     },
-    [cycleFilter, dnFilter, Data]
+    [cycleFilter, dnFilter, Data, kanban]
   );
 
   const generateCurrentProgressMap = (rows, comboFieldMap) => {
@@ -301,7 +307,7 @@ export default function InputSmart() {
 
     for (const [comboKey, value] of comboFieldMap.entries()) {
       const comboParts = comboKey.split("_");
-      // console.log(comboKey, value, "isi comboField", comboParts);
+      console.log(comboKey, value, "isi comboField", comboParts);
 
       const containsAll = comboParts.every((part) =>
         kanban.slice(0, dataReal.kanbanlength).includes(part.toLowerCase())
@@ -330,7 +336,7 @@ export default function InputSmart() {
 
         const qtyActual = value.qty;
         const currentQty = ProgressMap.get(comboKey).qty;
-
+        console.log("progress", qtyActual, currentQty);
         const overLimit = currentQty > qtyActual;
 
         if (overLimit) {
@@ -573,19 +579,19 @@ export default function InputSmart() {
       qtyNow,
       qtyAll,
     }) => {
-      // console.log(
-      //   "disini apa dn",
-      //   dn,
-      //   total,
-      //   sudahInput,
-      //   sudahInputAll,
-      //   totalMaplength,
-      //   totalDNCycle,
-      //   sudahClosedDNCycle,
-      //   forceFinish,
-      //   qtyNow,
-      //   qtyAll
-      // );
+      console.log(
+        "disini apa dn",
+        dn,
+        total,
+        sudahInput,
+        sudahInputAll,
+        totalMaplength,
+        totalDNCycle,
+        sudahClosedDNCycle,
+        forceFinish,
+        qtyNow,
+        qtyAll
+      );
       if (sudahInputAll == null || totalMaplength == null) return;
 
       if (total - sudahInput < 0) return;
@@ -763,24 +769,21 @@ export default function InputSmart() {
           ? 100
           : Math.round((sudahInputOD / totalKanban) * 100);
 
-      // console.log(
-      //   "contoh map",
-      //   order_no,
-      //   sudahInputOD,
-      //   totalKanban,
-      //   totalMaplength,
-      //   sudahInputAll,
-      //   finishAll,
-      //   qtyNow
-      // );
-
-      const dnNumber = order_no.split(",")[0];
+      console.log(
+        "contoh map",
+        order_no,
+        sudahInputOD,
+        totalKanban,
+        totalMaplength,
+        sudahInputAll,
+        finishAll,
+        qtyNow
+      );
 
       try {
         const basePayload = {
           customerId: id,
           tanggal: moment(selectedDate).format("YYYY-MM-DD"),
-          dnNumber,
           persentase: percent,
           qty: qtyNow,
         };
@@ -844,6 +847,7 @@ export default function InputSmart() {
             res.data.shift !== shiftWaktuMap?.[cycleFilter || 1]?.shift &&
             finishAll
           ) {
+            console.log("disini ga");
             setShiftWaktuMap((prev) => ({
               ...prev,
               [cycleFilter || 1]: {
@@ -915,13 +919,13 @@ export default function InputSmart() {
 
         console.log(res.data.verificationCode, "Ada ga");
         if (finishAll && res.data.verificationCode) {
+          console.log("kesini", res.data.verificationCode, "kirim");
           await axios.put(
             `${import.meta.env.VITE_BACKEND_URL}/api/track/finish`,
             {
               customerId: id,
               tanggal: moment(selectedDate).format("YYYY-MM-DD"),
               codeOD: res.data.verificationCode || null,
-              dnNumber: order_no.split(",")[0],
             }
           );
         }
@@ -947,7 +951,6 @@ export default function InputSmart() {
       !summary
     )
       return;
-
     let uniqueKey = "";
     console.log(summary, "ringkasan");
 
@@ -983,9 +986,12 @@ export default function InputSmart() {
 
       for (const [comboKey, targetQty] of comboFieldMap.entries()) {
         const comboParts = comboKey.split("_");
-        const kanbanSlice = kanban
-          .slice(0, dataReal.kanbanlength)
-          .toLowerCase();
+        const kanbanSlice =
+          dataReal.kanbanlength > 0
+            ? kanban.slice(0, dataReal.kanbanlength).toLowerCase()
+            : "";
+
+        console.log(comboParts, kanbanSlice);
 
         const containsAll = comboParts.every((part) =>
           kanbanSlice.includes(part.toLowerCase())
@@ -995,6 +1001,7 @@ export default function InputSmart() {
           comboMatch = { comboKey, targetQty };
           break;
         }
+        console.log(containsAll, "break", comboMatch);
       }
       // console.log(
       //   clonedCurrentProgressMap,
@@ -1002,20 +1009,25 @@ export default function InputSmart() {
       //   "ini progress",
       //   clonedCurrentDNMap
       // );
+
       if (
         comboMatch &&
         supplier.length >= dataReal.labelLength &&
         kanban.length >= dataReal.kanbanlength
       ) {
-        const { comboKey } = comboMatch;
-        uniqueKey = comboKey;
+        const { comboKey, targetQty } = comboMatch;
 
+        console.log("dih");
         const current = clonedCurrentProgressMap.get(comboKey) || {
           qty: 0,
           qtyKanban: 0,
         };
 
-        const material = comboToMaterialMap.get(comboKey).toLowerCase();
+        uniqueKey = comboKey;
+        const material = comboToMaterialMap
+          .get(comboKey)
+          .replace(/[-_/ ]/g, "")
+          .toLowerCase();
         const supplierMaterial = supplier
           .toLowerCase()
           .split("|")[0]
@@ -1026,37 +1038,55 @@ export default function InputSmart() {
           .replace(/[-_/ ]/g, "")
           .toLowerCase();
 
+        console.log("kesini kan");
         if (
           material === supplierMaterial ||
-          unique?.toLowerCase() === supplierMaterial ||
+          unique === supplierMaterial ||
           supplierMaterial.includes(unique?.toLowerCase())
         ) {
           const dn = comboToDNMap.get(comboKey);
-
+          const target = comboFieldMap.get(comboKey);
+          const current = clonedCurrentProgressMap.get(comboKey) || {
+            qty: 0,
+            qtyKanban: 0,
+          };
+          console.log(dn, dnFilter.includes(dn), "cek dn");
           if (dn && dnFilter.includes(dn)) {
-            console.log(dn);
+            // if (current.qty >= target.qty) {
+            //   console.log(
+            //     `SKIP DN ${dn} untuk ${comboKey}, qty sudah full (${current.qty}/${currentTarget})`
+            //   );
+            //   return;
+            // }
+
             clonedCurrentDNMap.set(dn, (clonedCurrentDNMap.get(dn) || 0) + 1);
             // clonedCurrentProgressMap.set(
             //   comboKey,
             //   (clonedCurrentProgressMap.get(comboKey) || 0) + 1
             // );
-            const current = clonedCurrentProgressMap.get(comboKey) || {
-              qty: 0,
-              qtyKanban: 0,
-            };
+
             clonedCurrentProgressMap.set(comboKey, {
               qty: current.qty + 1,
               qtyKanban:
-                currentProgressMap.get(comboKey).qtyKanban * (current.qty + 1),
+                currentProgressMap.get(comboKey).qtyKanban *
+                Math.min(current.qty + 1, target.qty),
             });
             // console.log(current, clonedCurrentProgressMap, "loop terus");
           }
+          console.log(comboKey, uniqueKey, "masa ga ada");
         }
         seen.add(index);
+        uniqueKey = comboKey;
       }
 
       // console.log("kesini", clonedCurrentProgressMap, clonedCurrentDNMap);
     });
+
+    const jumlahComboPerDN = new Map();
+
+    for (const [, dn] of comboToDNMap.entries()) {
+      jumlahComboPerDN.set(dn, (jumlahComboPerDN.get(dn) || 0) + 1);
+    }
 
     // const seenDN = new Set();
     const summaryTable = [];
@@ -1069,36 +1099,36 @@ export default function InputSmart() {
       let closed = true;
       let currentQty = 0;
       let currentOrder = 0;
-      // console.log(clonedCurrentProgressMap, "ini");
+      console.log(clonedCurrentProgressMap, "ini");
 
-      combos.forEach((comboKey) => {
-        const target = comboFieldMap.get(comboKey)?.qty || 0;
-        const orderPerCombo = comboFieldMap.get(comboKey).qtyKanban || 0;
-        const { qty, qtyKanban } = clonedCurrentProgressMap.get(comboKey) || {
+      combos.forEach((combo) => {
+        const target = comboFieldMap.get(combo)?.qty || 0;
+
+        const orderPerCombo = comboFieldMap.get(combo).qtyKanban || 0;
+        const { qty, qtyKanban } = clonedCurrentProgressMap.get(combo) || {
           qty: 0,
           qtyKanban: 0,
         };
-        // const progress = qty;
 
         if (qty < target) closed = false;
+        console.log(qty, target, "emang ya");
         currentQty += qty;
         currentOrder = orderPerCombo * qty;
       });
+
       const { qty, qtyKanban } = clonedCurrentProgressMap.get(uniqueKey) || {
         qty: 0,
         qtyKanban: 0,
       };
       // console.log(uniqueKey, qty, "unik kan");
-      const qtyK = comboFieldMap.get(uniqueKey)?.qty;
-      // console.log("jumlah", comboFieldMap, comboFieldMap.get(uniqueKey)?.qty);
-      const qtyPcs = comboFieldMap.get(uniqueKey)?.qtyKanban;
+
       const totalQty = dnMap.get(dn);
       // console.log(
       //   clonedCurrentProgressMap.get(uniqueKey).qty,
       //   "jumlah qty sekarang"
       // );
 
-      console.log(uniqueKey, "KOLOM UNIK", totalQty, qty);
+      console.log(uniqueKey, "KOLOM UNIK", currentQty, totalQty);
 
       summaryTable.push({
         dn_number: dn,
@@ -1117,16 +1147,26 @@ export default function InputSmart() {
         (item) => item.status === "Closed"
       ).length;
 
-      let totalKanban = 0;
+      // let totalKanban = 0;
 
-      for (const [comboKey, relatedDN] of comboToDNMap) {
-        if (relatedDN === dn) {
-          const progress = clonedCurrentProgressMap.get(comboKey);
-          if (progress?.qty > 0) {
-            totalKanban += progress.qtyKanban || 0;
-          }
-        }
-      }
+      // for (const [comboKey, relatedDN] of comboToDNMap) {
+      //   if (relatedDN === dn) {
+      //     const progress = clonedCurrentProgressMap.get(comboKey);
+      //     if (progress?.qty > 0) {
+      //       totalKanban += progress.qtyKanban || 0;
+      //     }
+      //   }
+      // }
+
+      const jumlahAll = Array.from(clonedCurrentProgressMap.entries()).reduce(
+        (total, [key, value]) => {
+          const relatedDN = comboToDNMap.get(key);
+          if (relatedDN !== dn) return total; // skip combo yang bukan untuk DN ini
+
+          return total + (value.qty === 0 ? 0 : value.qtyKanban);
+        },
+        0
+      );
 
       console.log(
         "setelah berubah",
@@ -1136,6 +1176,8 @@ export default function InputSmart() {
         comboToDNMap,
         currentDNMap,
         currentProgressMap,
+        clonedCurrentComboMap,
+        clonedCurrentProgressMap,
         currentsingleFieldMap,
         jumlahOrderComboField,
         jumlahOrderDNMap,
@@ -1143,30 +1185,41 @@ export default function InputSmart() {
         selectedDataMap
       );
 
+      console.log("unik", uniqueKey);
+      setCurrentComboMap(clonedCurrentProgressMap);
+
+      let sudahFullCount = 0;
+      for (const [key, nowValue] of clonedCurrentProgressMap.entries()) {
+        const fullValue = comboFieldMap.get(key);
+        if (fullValue && nowValue.qty >= fullValue.qty) {
+          sudahFullCount++;
+        }
+      }
       console.log(
         dn,
         totalQty,
-        currentQty,
-        comboToDNMap.size,
-        closedCount,
+        comboFieldMap.get(uniqueKey)?.qty || 0,
+        clonedCurrentProgressMap.get(uniqueKey)?.qty || 0,
+        sudahFullCount,
+        Math.min(sudahFullCount, jumlahComboPerDN.get(dn)),
+        jumlahComboPerDN.get(dn),
         dnMap.size,
         closedCount,
-        closedCount === comboToDNMap.size, // apa dn sudah ada semua, dnMap, dan
-        jumlahOrderDNMap.get(dn), // jumlah qty DN
+        closedCount === jumlahComboPerDN.get(dn), // apa dn sudah ada semua, dnMap, dan
+        jumlahAll, // jumlah qty DN
         jumlahOrderDNMap.get(dn)
       );
-      console.log("unik", uniqueKey);
 
       await updateDnStatus({
         dn,
-        total: totalQty,
-        sudahInput: currentQty,
-        sudahInputAll: comboToDNMap.size,
-        totalMaplength: closedCount,
+        total: comboFieldMap.get(uniqueKey)?.qty || 0,
+        sudahInput: clonedCurrentProgressMap.get(uniqueKey)?.qty || 0,
+        sudahInputAll: Math.min(sudahFullCount, jumlahComboPerDN.get(dn)),
+        totalMaplength: jumlahComboPerDN.get(dn),
         totalDNCycle: dnMap.size,
         sudahClosedDNCycle: closedCount,
         forceFinish: closedCount === dnMap.size,
-        qtyNow: totalKanban,
+        qtyNow: jumlahAll,
         qtyAll: jumlahOrderDNMap.get(dn),
       });
     }
@@ -1177,7 +1230,6 @@ export default function InputSmart() {
     //   };
     // });
 
-    setCurrentComboMap(clonedCurrentProgressMap);
     setSummaryTable(summaryTable);
   }, [
     rows,
@@ -1203,31 +1255,36 @@ export default function InputSmart() {
     const totalMap = {};
     const jumlahQTY = {};
     const jumlahQTYDN = {};
-    const jobCountPerDN = {};
+    const jobCountPerCycle = {};
     const jobMap = new Map();
     const qtyPerJob = {};
     const qtyPerDNBerjalan = {};
 
     Data.forEach((item) => {
       console.log("disini perhitungan", Data, item);
-      const dn = item.dn_number;
+      // const dn = item.dn_number;
       const cycle = item.delivery_cycle || "1";
-      const job = item?.customer_material;
-      const key = `${dn},${job}`;
+      const [job1, job2] = String(item.customer_material).split("-");
+      const job = job1 + "-" + job2;
+      // const key = `${dn},${job}`;
+      const key = `${job}+${cycle}`;
       console.log(key, job);
       const orderQty = Number(item[`order_(pcs)`]);
       const unitQty = Number(item.qty);
-      const totalQty = Math.round(orderQty / unitQty);
-
+      const totalQty = Math.max(1, Math.ceil(orderQty / unitQty));
       totalMap[key] = (totalMap[key] || 0) + totalQty;
       jumlahQTY[key] = (jumlahQTY[key] || 0) + orderQty;
-      if (!jobCountPerDN[dn]) jobCountPerDN[dn] = new Set();
-      jobCountPerDN[dn].add(job);
+      // if (!jobCountPerDN[dn]) jobCountPerDN[dn] = new Set();
+      // jobCountPerDN[dn].add(job);
+      if (!jobCountPerCycle[cycle]) jobCountPerCycle[cycle] = new Set();
+      jobCountPerCycle[cycle].add(job);
 
       jobMap.set(key, item);
-      jumlahQTYDN[dn + cycle] = (jumlahQTYDN[dn + cycle] || 0) + orderQty;
+      jumlahQTYDN[job + cycle] = (jumlahQTYDN[job + cycle] || 0) + orderQty;
+      // jumlahQTYDN[dn + cycle] = (jumlahQTYDN[dn + cycle] || 0) + orderQty;
       qtyPerJob[key] = totalQty * unitQty;
-      qtyPerDNBerjalan[dn] = (qtyPerDNBerjalan[dn] || 0) + qtyPerJob[key];
+      // qtyPerDNBerjalan[dn] = (qtyPerDNBerjalan[dn] || 0) + qtyPerJob[key];
+      qtyPerDNBerjalan[cycle] = (qtyPerDNBerjalan[cycle] || 0) + qtyPerJob[key];
     });
 
     const sisaMap = {};
@@ -1236,11 +1293,15 @@ export default function InputSmart() {
       if (!validList[index]) return;
 
       const jobKey = Array.from(jobMap.keys()).find((key) => {
-        const job = key.split(",")[1];
+        const job = key.split("+")[0];
+        console.log(
+          row.kanban?.toLowerCase().includes(job.toLowerCase(), "status")
+        );
         return row.kanban?.toLowerCase().includes(job.toLowerCase());
       });
 
       if (jobKey) {
+        console.log(jobKey, "kesini ga");
         sisaMap[jobKey] = (sisaMap[jobKey] || 0) + 1;
       }
     });
@@ -1250,12 +1311,14 @@ export default function InputSmart() {
 
     const summaryTableNoKanban = [];
     const dnClosedStatus = {};
-    let closedDNCount = 0;
-    let totalDN = Object.keys(jobCountPerDN).length;
+    // let closedDNCount = 0;
+    // let totalDN = Object.keys(jobCountPerDN).length;
+    // let totalJob = Object.keys(jobCountPerCycle).length;
     // let totalDNCount = Object.keys(jobCountPerDN).length;
 
     for (const key of Object.keys(totalMap)) {
-      const [dn, job] = key.split(",");
+      // const [dn, job] = key.split(",");
+      const [job, cycle] = key.split("+");
       const total = totalMap[key];
       const input = sisaMap[key] || 0;
       const currentProgressQty = input * (jobMap.get(key)?.qty || 0); // Ini qty aktual
@@ -1272,31 +1335,63 @@ export default function InputSmart() {
       });
 
       if (status === "Closed") {
-        dnClosedStatus[dn] = (dnClosedStatus[dn] || 0) + 1;
+        // dnClosedStatus[dn] = (dnClosedStatus[dn] || 0) + 1;
+        dnClosedStatus[cycle] = (dnClosedStatus[cycle] || 0) + 1;
       }
 
       // Jika semua job dalam DN ini sudah closed
-      const totalJobInDN = jobCountPerDN[dn]?.size || 0;
-      const jobClosedInThisDN = dnClosedStatus[dn] || 0;
-      const isAllJobInThisDNClosed = jobClosedInThisDN === totalJobInDN;
+      // const totalJobInDN = jobCountPerDN[dn]?.size || 0;
+      // const jobClosedInThisDN = dnClosedStatus[dn] || 0;
+      // const isAllJobInThisDNClosed = jobClosedInThisDN === totalJobInDN;
 
       // Jika semua DN selesai
-      const willBeClosedDNCount = Object.values(dnClosedStatus).filter(
-        (count, idx) => {
-          const dnKey = Object.keys(dnClosedStatus)[idx];
-          return count === jobCountPerDN[dnKey]?.size;
-        }
-      ).length;
+      // const willBeClosedDNCount = Object.values(dnClosedStatus).filter(
+      //   (count, idx) => {
+      //     const dnKey = Object.keys(dnClosedStatus)[idx];
+      //     return count === jobCountPerDN[dnKey]?.size;
+      //   }
+      // ).length;
 
-      const isAllDNClosed = willBeClosedDNCount === totalDN;
+      // const willBeClosedDNCount = Object.values(dnClosedStatus).filter(
+      //   (count, idx) => {
+      //     console.log(count, idx);
+      //     const dnKey = Object.keys(dnClosedStatus)[idx];
+      //     console.log(
+      //       dnClosedStatus,
+      //       "ini",
+      //       dnKey,
+      //       jobCountPerCycle[dnKey].size,
+      //       jobCountPerCycle[Number(dnKey)]
+      //     );
+      //     return count === jobCountPerCycle[dnKey]?.size;
+      //   }
+      // ).length;
+
+      const isAllDNClosed =
+        dnClosedStatus[cycle] === jobCountPerCycle[cycle].size;
       // console.log(isAllDNClosed, totalDN, willBeClosedDNCount, "ini kitiman");
-
+      console.log(
+        "INI DIKIRIM",
+        key,
+        sisaMap,
+        dnClosedStatus,
+        jobCountPerCycle,
+        input,
+        total,
+        jobCountPerCycle[cycle].size,
+        dnClosedStatus[cycle],
+        isAllDNClosed,
+        currentProgressQty
+      );
       await updateODStatus(
         key, // tetap pakai key = `${dn},${job}`
         input,
         total,
-        totalDN,
-        willBeClosedDNCount,
+        // totalDN,
+        // willBeClosedDNCount,
+        // isAllDNClosed,
+        jobCountPerCycle[cycle].size,
+        dnClosedStatus[cycle],
         isAllDNClosed,
         currentProgressQty
       );
@@ -1343,6 +1438,8 @@ export default function InputSmart() {
     //   comboFieldMap,
     //   dataReal
     // );
+
+    console.log("progress", currentComboMap, summary.comboFieldMap);
 
     const match = matchEntryWithMergedData(
       // Data,
@@ -1503,33 +1600,55 @@ export default function InputSmart() {
     // .split("|")[0];
     let isValid = false;
 
-    const found = selectedData.findIndex((d) => {
-      return A.includes(
-        lastCharAfterSpace(normalizeText(d?.toLowerCase()), separator)
-      );
-    });
+    const dataSelectFitur = summary.selectedDataMap;
+    const baru = dataSelectFitur.get(A.toUpperCase());
 
-    if (found == -1) {
-      console.log("dnfound");
-      isValid = false;
-    }
+    console.log(summary.selectedDataMap, "ini pake", baru);
+    // const found = selectedData.findIndex((d) => {
+    //   return (
+    //     A.includes(
+    //       lastCharAfterSpace(normalizeText(d?.toLowerCase()), separator)
+    //     ) || A.includes(baru.split("-")[1])
+    //   );
+    // });
 
-    if (found !== -1) {
+    const found = A.toUpperCase() === baru;
+
+    console.log(found, "keteu ga", A, baru);
+    // if (found == -1) {
+    //   console.log("dnfound");
+    //   isValid = false;
+    // }
+
+    const [job1, job2, job3] = baru.split("-");
+    // if (found !== -1) {
+    if (found) {
       console.log("jumlah + 1");
       isValid = true;
+      // if (
+      //   jumlahKanban[
+      //     `${Data[found].dn_number},${Data[found][uniqueColumn[0]]}`
+      //   ] > endDN[`${Data[found].dn_number},${Data[found][uniqueColumn[0]]}`]
+      // ) {
+      //   console.log("jumlahkanban");
+      //   isValid = false;
+      // }
+      console.log(
+        "jumlahkanban",
+        endDN,
+        jumlahKanban,
+        jumlahKanban[`${job1 + "-" + job2}+${cycleFilter}`],
+        `${job1 + "-" + job2}+${cycleFilter}`
+      );
       if (
-        jumlahKanban[
-          `${Data[found].dn_number},${Data[found][uniqueColumn[0]]}`
-        ] > endDN[`${Data[found].dn_number},${Data[found][uniqueColumn[0]]}`]
+        jumlahKanban[`${job1 + "-" + job2}+${cycleFilter}`] >
+        endDN[`${job1 + "-" + job2}+${cycleFilter}`]
       ) {
-        console.log("jumlahkanban");
         isValid = false;
       }
 
-      jumlahKanban[`${Data[found].dn_number},${Data[found][uniqueColumn[0]]}`] =
-        (jumlahKanban[
-          `${Data[found].dn_number},${Data[found][uniqueColumn[0]]}`
-        ] || 0) + 1;
+      jumlahKanban[`${job1 + "-" + job2}+${cycleFilter}`] =
+        (jumlahKanban[`${job1 + "-" + job2}+${cycleFilter}`] || 0) + 1;
       // console.log(String(Data[found].dn_number), "dn");
     }
     const updatedValidList = [...validList];
@@ -1745,7 +1864,7 @@ export default function InputSmart() {
             className="w-full p-3 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
             dayClassName={dayClassName}
             highlightDates={highlightDates}
-            maxDate={new Date()}
+            // maxDate={new Date() }
             placeholderText="Pilih tanggal"
             showYearDropdown
             dropdownMode="select"

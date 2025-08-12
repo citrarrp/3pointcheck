@@ -323,9 +323,11 @@ const TimelineChart = ({
 
     const departureDelay = filteredDeparture
       .filter((item) => item.statusColor === "#e60a29")
-      .map((item) => ({
+      .map((item, index) => ({
         ...item,
-        waktuParsed: getTimeDelay,
+        waktuParsed: new Date(
+          getTimeDelay.getTime() + index * 5000 + Math.random() * 2000
+        ),
         delay: item.waktu,
       }));
     // console.log(getTimeDelay, "waktu delay", departureDelay);

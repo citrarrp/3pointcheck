@@ -109,6 +109,7 @@ import { useReactToPrint } from "react-to-print";
 import { HiChevronDown } from "react-icons/hi";
 import PDFTable from "./Tabellabel";
 import api from "../utils/api";
+import SUNMI from "sunmi-js-sdk";
 import moment from "moment-timezone";
 
 const Cetaklabel = ({ data, qty, date, code, sequenceFirst, separator }) => {

@@ -168,7 +168,7 @@ class PrinterWebSocket {
   connect() {
     return new Promise((resolve, reject) => {
       const Socket = window.MozWebSocket || window.WebSocket;
-      
+
       if (!Socket)
         reject(assert(Socket, "Browser does not support Websocket!"));
       try {
