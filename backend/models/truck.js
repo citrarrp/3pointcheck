@@ -1,8 +1,25 @@
 import mongoose from "mongoose";
-// import moment from "moment-timezone";
+
+const CycleStepSchema = new mongoose.Schema(
+  {
+    cycleNumber: {
+      type: String,
+      required: true,
+    },
+    loadingTime: Date,
+    ETA: Date,
+    ETD: Date,
+    ETA_Cust: Date,
+  },
+  { _id: false }
+);
 
 const TruckSchema = new mongoose.Schema({
-  truckName: {
+  partnerName: {
+    type: String,
+    required: true,
+  },
+  customerName: {
     type: String,
     required: true,
   },
@@ -19,13 +36,14 @@ const TruckSchema = new mongoose.Schema({
     enum: ["Milkrun", "Direct"],
     required: true,
   },
-  customerId: {
-    type: mongoose.ObjectId,
-    ref: "tes",
-    required: true,
+  cycleSteps: [CycleStepSchema],
+  lastSyncFromSOD: {
+    type: Date,
+    default: null,
   },
-  cycleNumber: {
-    type: Number,
+  customerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "tes",
     required: true,
   },
 });

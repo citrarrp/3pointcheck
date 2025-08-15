@@ -14,7 +14,7 @@ import TagMTM from "./autoPrintTag.jsx";
 import { AuthContext } from "../context/auth";
 import DatePicker from "react-datepicker";
 import html2canvas from "html2canvas";
-import IminPrinter from "../assets/imin-printer.esm.browser.js";
+import IminPrinter from "../assets/imin-printer-js.js";
 import SUNMI from "sunmi-js-sdk";
 
 const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
@@ -22,6 +22,7 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
   const [isPrint, setIsPrinting] = useState(false);
   const [tableComponent, setTableComponent] = useState(null);
   const { user, loading } = useContext(AuthContext);
+  const [printerStatus, setPrintStatus] = useState("Load");
   // const [customerName, setCustomerName] = useState("");
 
   const [printer, setPrinter] = useState(null);
@@ -74,22 +75,22 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
   //   window.imin?.printText(text); // jika dari iMin WebView
   // };
   // const printerIP = "ws://localhost:8081";
-  useEffect(() => {
-    const initPrinter = async () => {
-      const instance = new IminPrinter();
-      const connected = await instance.connect();
-      if (connected) {
-        await instance.initPrinter();
-        setPrinter(instance);
-        setIsConnected(true);
-        console.log("Printer connected");
-      } else {
-        console.log("Failed to connect");
-      }
-    };
+  // useEffect(() => {
+  //   const initPrinter = async () => {
+  //     const instance = new IminPrinter();
+  //     const connected = await instance.connect();
+  //     if (connected) {
+  //       await instance.initPrinter();
+  //       setPrinter(instance);
+  //       setIsConnected(true);
+  //       console.log("Printer connected");
+  //     } else {
+  //       console.log("Failed to connect");
+  //     }
+  //   };
 
-    initPrinter();
-  }, []);
+  //   initPrinter();
+  // }, []);
 
   const reactToPrintFn = useReactToPrint({
     content: () => printDiv.current,
@@ -175,46 +176,12 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
   //   `<img src="${imgData}" onload="window.print(); window.close()" />`
   // );
   // };
-  const fallbackWebPrint = async () => {
+
+  const fallbackWebPrint = async (canvas, paperWidth) => {
     const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     setIsPrinting(true);
-    console.log("kesini");
-    await delay(300);
-    reactToPrintFn();
-    setIsPrinting(false);
-  };
 
-  const handlePrintUniversal = async (options = {}) => {
-    const {
-      paperSize = "58mm", // "58mm" atau "80mm"
-      rotate = false, // hanya untuk iMin
-      multi = false, // hanya untuk iMin
-      customType = 0, // hanya untuk Sunmi: 0=normal, 1=BW, 2=grayscale
-    } = options;
-
-    const paperWidthPx = paperSize === "58mm" ? 384 : 576;
-
-    if (!printDiv.current) {
-      console.warn("printDiv ref tidak ditemukan!");
-      return;
-    }
-
-    // Ambil screenshot elemen HTML
-    let canvas = await html2canvas(printDiv.current, { scale: 2 });
-
-    // Resize ke lebar kertas
-    if (canvas.width !== paperWidthPx) {
-      const resizedCanvas = document.createElement("canvas");
-      const ctx = resizedCanvas.getContext("2d");
-      const scaleFactor = paperWidthPx / canvas.width;
-      resizedCanvas.width = paperWidthPx;
-      resizedCanvas.height = canvas.height * scaleFactor;
-      ctx.drawImage(canvas, 0, 0, resizedCanvas.width, resizedCanvas.height);
-      canvas = resizedCanvas;
-    }
-
-    // Rotasi 90° jika diminta (hanya iMin)
-    if (rotate && imin) {
+    if (canvas && canvas.width > 0 && canvas.height > 0) {
       const rotatedCanvas = document.createElement("canvas");
       const ctx = rotatedCanvas.getContext("2d");
       rotatedCanvas.width = canvas.height;
@@ -224,69 +191,203 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
       ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
       canvas = rotatedCanvas;
     }
+    if (canvas.width !== paperWidth) {
+      const resizedCanvas = document.createElement("canvas");
+      const ctx = resizedCanvas.getContext("2d");
+      const scaleFactor = paperWidth / canvas.width;
+      resizedCanvas.width = paperWidth;
+      resizedCanvas.height = canvas.height * scaleFactor;
+      ctx.drawImage(canvas, 0, 0, resizedCanvas.width, resizedCanvas.height);
+      canvas = resizedCanvas;
+    }
 
-    // Data URL untuk cetak
-    const dataUrl = canvas.toDataURL("image/png", 1.0);
+    const imgData = canvas.toDataURL("image/png", 1.0);
 
     try {
-      // Cek koneksi & status iMin
-      if (imin) {
-        const connected = await imin.connect();
-        if (!connected) throw new Error("Tidak bisa konek ke iMin printer");
+      await api.post("/print-tag", { image: imgData });
+    } catch (err) {
+      console.error("Gagal print:", err);
+      alert("Gagal print");
+      console.log("kesini");
+      await delay(300);
+      reactToPrintFn();
+    } finally {
+      setIsPrinting(false);
+    }
+  };
 
-        const status = await imin.getStatus();
-        console.log("Status iMin:", status);
+  const transformCanvasForPrint = (canvas, paperWidth, rotate90 = true) => {
+    if (!canvas) return null;
 
-        if (status !== 0) {
-          console.warn("iMin tidak siap, fallback web print");
-          return fallbackWebPrint();
-        }
+    const scaledCanvas = document.createElement("canvas");
+    const scaleFactor = paperWidth / canvas.width;
+    scaledCanvas.width = paperWidth;
+    scaledCanvas.height = canvas.height * scaleFactor;
+    const context2DScale = scaledCanvas.getContext("2d");
+    context2DScale.imageSmoothingEnabled = true;
+    context2DScale.imageSmoothingQuality = "high";
+    context2DScale.drawImage(
+      canvas,
+      0,
+      0,
+      scaledCanvas.width,
+      scaledCanvas.height
+    );
 
-        await imin.initPrinter();
-        if (multi && Array.isArray(dataUrl)) {
-          await imin.printMultiBitmap(dataUrl, 1); // 1=center
-        } else {
-          await imin.printSingleBitmap(dataUrl, 1);
-        }
-        console.log("Cetak iMin selesai!");
-        return;
-      }
+    if (!rotate90) return scaledCanvas;
 
-      // Cek koneksi & status Sunmi
-      if (sunmi) {
-        await sunmi.launchPrinterService();
-        console.log("Service printer Sunmi dibuka");
-        sunmi.init();
+    const rotatedCanvas = document.createElement("canvas");
+    rotatedCanvas.width = scaledCanvas.height;
+    rotatedCanvas.height = scaledCanvas.width;
+    const ctxRotate = rotatedCanvas.getContext("2d");
+    ctxRotate.imageSmoothingEnabled = true;
+    ctxRotate.imageSmoothingQuality = "high";
+    ctxRotate.translate(rotatedCanvas.width / 2, rotatedCanvas.height / 2);
+    ctxRotate.rotate(Math.PI / 2);
+    ctxRotate.drawImage(
+      scaledCanvas,
+      -scaledCanvas.width / 2,
+      -scaledCanvas.height / 2
+    );
 
-        const status = await sunmi.printer.getStatus();
-        console.log("Status Sunmi:", status);
+    return rotatedCanvas;
+  };
 
-        if (status !== 1 && status !== 2) {
-          console.warn("Sunmi tidak siap, fallback web print");
-          return fallbackWebPrint();
-        }
+  const handlePrintUniversal = async ({ paperSize = "58mm" } = {}) => {
+    const paperWidth = paperSize === "58mm" ? 384 : 576;
 
-        const img = new Image();
-        img.src = dataUrl;
-        img.onload = async () => {
-          try {
-            await sunmi.printer.printBitmapCustom(img, customType, (res) => {
-              console.log("Hasil print Sunmi:", res);
+    if (!printDiv.current) {
+      console.warn("printDiv ref tidak ditemukan!");
+      return;
+    }
+
+    let canvas = await html2canvas(printDiv.current, { scale: 1.5 });
+    try {
+      let rowCanvas = await html2canvas(printDiv.current, { scale: 2 });
+      const processedCanvas = transformCanvasForPrint(
+        rowCanvas,
+        paperWidth,
+        true
+      );
+
+      const dataUrl = processedCanvas.toDataURL("image/png", 1.0);
+
+      const connectIminWithTimeout = (timeoutMs = 2000) => {
+        return new Promise((resolve, reject) => {
+          let done = false;
+
+          // Timeout manual
+          const timer = setTimeout(() => {
+            if (!done) {
+              done = true;
+              reject(new Error("Timeout koneksi iMin"));
+            }
+          }, timeoutMs);
+
+          imin
+            .connect()
+            .then((isConnect) => {
+              if (done) return; // sudah timeout
+              clearTimeout(timer);
+              done = true;
+              if (!isConnect) {
+                reject(new Error("Gagal konek ke iMin"));
+              } else {
+                resolve(true);
+              }
+            })
+            .catch((err) => {
+              if (done) return;
+              clearTimeout(timer);
+              done = true;
+              reject(err);
             });
-          } catch (err) {
-            console.error("Gagal cetak Sunmi:", err);
-            fallbackWebPrint();
-          }
-        };
-        return;
-      }
+        });
+      };
+      try {
+        if (imin) {
+          setPrintStatus("Mencoba konek ke iMin...");
+          await connectIminWithTimeout(6000);
 
-      // Kalau tidak ada printer instance
-      console.warn("Tidak ada printer instance, fallback web print");
-      fallbackWebPrint();
+          const status = await imin.getPrinterStatus(
+            imin.PrintConnectType?.USB || 0
+          );
+          console.log("Status printer iMin:", status);
+
+          const errorMap = {
+            [-1]: "Printer tidak terhubung atau mati",
+            [1]: "Printer tidak terhubung atau mati",
+            [3]: "Kepala printer terbuka",
+            [7]: "Kertas habis",
+            [8]: "Kertas hampir habis",
+            [99]: "Error tidak dikenal",
+          };
+
+          if (errorMap[status]) {
+            const msg = errorMap[status];
+            setPrintStatus(`Gagal print iMin: ${msg}`);
+            alert(`Gagal print iMin: ${msg}`);
+            return;
+          }
+
+          setPrintStatus("Terhubung ke iMin, memulai print...");
+          imin.initPrinter();
+          imin.printText(
+            'iMin advocates the core values of "Integrity, Customer First, Invention&Creation, Patience”, using cloud-based technology to help businesses to get access to the Internet and also increases their data base, by providing more solutions so that their business can take a step further. Through their efficiency enhancement, cost improvement, service innovation, and better services for consumers, these aspect will drives the entire industry development.'
+          );
+          imin.printSingleBitmap(dataUrl, 1);
+          if (typeof imin.partialCut === "function") imin.partialCut();
+
+          setPrintStatus("Cetak iMin selesai");
+
+          return;
+        }
+      } catch (err) {
+        console.warn("Error iMin:", err);
+        alert(`Error iMin: ${err.message}`);
+      }
+      try {
+        if (sunmi) {
+          setPrintStatus("Mencoba konek ke Sunmi...");
+          await sunmi.launchPrinterService();
+          sunmi.init();
+
+          const status = await sunmi.printer.queryApi.getStatus();
+          console.log("Status Sunmi:", status);
+          if (status !== 1 && status !== 2)
+            throw new Error("Printer Sunmi tidak siap");
+
+          const img = new Image();
+          img.crossOrigin = "Anonymous";
+          img.src = dataUrl;
+          img.onload = async () => {
+            try {
+              await sunmi.printer.printBitmap(img, (res) =>
+                console.log("Hasil print Sunmi:", res)
+              );
+              if (typeof sunmi.printer.cutPaper === "function") {
+                sunmi.printer.cutPaper((res) =>
+                  console.log("Hasil cut Sunmi:", res)
+                );
+              }
+              setPrintStatus("Cetak Sunmi selesai");
+            } catch (err) {
+              console.error("Gagal cetak Sunmi:", err);
+              alert(`Error cetak Sunmi: ${err.message}`);
+              fallbackWebPrint(processedCanvas, paperWidth);
+            }
+          };
+          return;
+        }
+      } catch (err) {
+        console.warn("Error Sunmi:", err);
+        alert(`Error Sunmi: ${err.message}`);
+      }
+      setPrintStatus("Printer tidak ditemukan, fallback web print");
+      fallbackWebPrint(processedCanvas, paperWidth);
     } catch (err) {
       console.error("Error saat cetak:", err);
-      fallbackWebPrint();
+      fallbackWebPrint(canvas, paperWidth);
     }
   };
 
@@ -518,6 +619,7 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
                 Cetak Label
               </button>
             </div>
+            <div>Status: {printerStatus}</div>
           </div>
         </form>
       </section>

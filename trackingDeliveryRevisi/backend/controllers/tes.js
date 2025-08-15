@@ -64,6 +64,7 @@ export const createData = async (req, res) => {
 
   try {
     const newDataCustomer = new Tes(payload);
+    console.log(payload, "disini simpen");
     const savedData = await newDataCustomer.save();
 
     const result = [];

@@ -164,6 +164,8 @@ import {
 import {
   PiShippingContainerLight,
   PiShippingContainerFill,
+  PiTruckTrailerFill,
+  PiTruckTrailer,
 } from "react-icons/pi";
 import { PiPassword, PiPasswordFill } from "react-icons/pi";
 import { AiFillProduct, AiOutlineProduct } from "react-icons/ai";
@@ -194,8 +196,8 @@ const Sidebar_Link = [
     routes: "/",
     name: "Home",
     icon: {
-      fill: <HiHome size={24} />,
-      outline: <HiOutlineHome size={24} />,
+      fill: <HiHome size={22} />,
+      outline: <HiOutlineHome size={22} />,
     },
     role: "ppic",
   },
@@ -204,8 +206,8 @@ const Sidebar_Link = [
     routes: "/history",
     name: "Truck Timetable",
     icon: {
-      fill: <RiChatHistoryFill size={24} />,
-      outline: <RiChatHistoryLine size={24} />,
+      fill: <RiChatHistoryFill size={22} />,
+      outline: <RiChatHistoryLine size={22} />,
     },
     role: "ppic",
   },
@@ -214,8 +216,8 @@ const Sidebar_Link = [
     routes: "/label",
     name: "Data Label",
     icon: {
-      fill: <MdLabel size={24} />,
-      outline: <MdLabelOutline size={24} />,
+      fill: <MdLabel size={22} />,
+      outline: <MdLabelOutline size={22} />,
     },
     role: "ppic",
   },
@@ -224,8 +226,8 @@ const Sidebar_Link = [
     routes: "/updateDelivery",
     name: "Update Order",
     icon: {
-      fill: <MdDriveFileMove size={24} />,
-      outline: <MdDriveFileMoveOutline size={24} />,
+      fill: <MdDriveFileMove size={22} />,
+      outline: <MdDriveFileMoveOutline size={22} />,
     },
     role: "ppic",
   },
@@ -234,8 +236,8 @@ const Sidebar_Link = [
     routes: "/printLabel",
     name: "Print Label",
     icon: {
-      fill: <HiPrinter size={24} />,
-      outline: <HiOutlinePrinter size={24} />,
+      fill: <HiPrinter size={22} />,
+      outline: <HiOutlinePrinter size={22} />,
     },
     role: "production",
   },
@@ -244,8 +246,8 @@ const Sidebar_Link = [
     routes: "/scanQR",
     name: "Scan QR Code",
     icon: {
-      fill: <MdQrCodeScanner size={24} />,
-      outline: <MdOutlineQrCodeScanner size={24} />,
+      fill: <MdQrCodeScanner size={22} />,
+      outline: <MdOutlineQrCodeScanner size={22} />,
     },
     role: "ppic",
   },
@@ -254,8 +256,8 @@ const Sidebar_Link = [
     routes: "/tracking",
     name: "Tracking Delivery",
     icon: {
-      fill: <HiTruck size={24} />,
-      outline: <HiOutlineTruck size={24} />,
+      fill: <HiTruck size={22} />,
+      outline: <HiOutlineTruck size={22} />,
     },
     role: "ppic",
   },
@@ -279,11 +281,11 @@ const Sidebar_Link = [
   // },
   {
     id: 10,
-    routes: "/scanAbsensi",
-    name: "Scan Absensi Truck",
+    routes: "/absensi",
+    name: "Absensi Truck",
     icon: {
-      fill: <FaAddressCard size={23} />,
-      outline: <FaRegAddressCard size={23} />,
+      fill: <FaAddressCard size={22} />,
+      outline: <FaRegAddressCard size={22} />,
     },
     role: "ppic",
   },
@@ -292,8 +294,8 @@ const Sidebar_Link = [
     routes: "/scanFinishPrepare",
     name: "Scan Finish Prepare",
     icon: {
-      fill: <PiShippingContainerFill size={23} />,
-      outline: <PiShippingContainerLight size={23} />,
+      fill: <PiShippingContainerFill size={22} />,
+      outline: <PiShippingContainerLight size={22} />,
     },
     role: "ppic",
   },
@@ -302,28 +304,38 @@ const Sidebar_Link = [
     routes: "/masterMaterial",
     name: "Data Master Material",
     icon: {
-      fill: <AiFillProduct size={24} />,
-      outline: <AiOutlineProduct size={24} />,
+      fill: <AiFillProduct size={22} />,
+      outline: <AiOutlineProduct size={22} />,
     },
     role: "ppic",
   },
   {
     id: 13,
-    routes: "/register",
-    name: "Registrasi User",
+    routes: "/masterTruck",
+    name: "Data Master Truck",
     icon: {
-      fill: <TiUserAdd size={24} />,
-      outline: <TiUserAddOutline size={24} />,
+      fill: <PiTruckTrailerFill size={22} />,
+      outline: <PiTruckTrailer size={22} />,
     },
     role: "ppic",
   },
   {
     id: 14,
+    routes: "/register",
+    name: "Registrasi User",
+    icon: {
+      fill: <TiUserAdd size={22} />,
+      outline: <TiUserAddOutline size={22} />,
+    },
+    role: "ppic",
+  },
+  {
+    id: 15,
     routes: "/forget-password",
     name: "Ubah Password",
     icon: {
-      fill: <PiPasswordFill size={24} />,
-      outline: <PiPassword size={24} />,
+      fill: <PiPasswordFill size={22} />,
+      outline: <PiPassword size={22} />,
     },
     role: "",
   },

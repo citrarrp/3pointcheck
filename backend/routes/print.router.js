@@ -5,7 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import pdfPrinter from "pdf-to-printer";
-const { print } = pdfPrinter;
+const { print, getPrinters } = pdfPrinter;
 import PDFDocument from "pdfkit";
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -13,7 +13,24 @@ const __dirname = dirname(__filename);
 
 import puppeteer from "puppeteer";
 import sharp from "sharp";
+const PRINTER_NAME = "EPSON TM-T82 Receipt (v)";
 
+async function checkPrinterReady(printerName) {
+  const printers = await getPrinters();
+  const printer = printers.find((p) => p.name === printerName);
+
+  if (!printer) {
+    throw new Error(`Printer "${printerName}" tidak ditemukan`);
+  }
+
+  if (printer.status && printer.status !== 0) {
+    throw new Error(
+      `Printer "${printerName}" tidak siap (status: ${printer.status})`
+    );
+  }
+
+  return true;
+}
 router.post("/print-tag", async (req, res) => {
   const { html } = req.body;
 
@@ -34,23 +51,21 @@ router.post("/print-tag", async (req, res) => {
   const outputPath = path.join("output", "label.png");
 
   try {
+    await checkPrinterReady(PRINTER_NAME);
     const browser = await puppeteer.launch({
-      headless: "new", // true atau 'new' (biar tetap support sandbox)
+      headless: "new", // true atau 'new' (biar support sandbox)
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
     const page = await browser.newPage();
     await page.setContent(htmlContent, { waitUntil: "networkidle0" });
-    await page.setViewport({ width: 384, height: 600 }); // 384px untuk printer thermal 80mm
+    await page.setViewport({ width: 384, height: 600 });
 
     const screenshotBuffer = await page.screenshot({ fullPage: true });
     await browser.close();
 
-    // Gunakan sharp untuk resize atau convert jika perlu
-    await sharp(screenshotBuffer)
-      .resize(384) // Lebar 80mm thermal printer (sekitar 384px @ 203 DPI)
-      .png()
-      .toFile(outputPath);
+    // Pakai sharp untuk resize atau convert
+    await sharp(screenshotBuffer).resize(384).png().toFile(outputPath);
 
     // Cetak file hasil render
     await print(outputPath, {
@@ -75,6 +90,7 @@ router.post("", async (req, res) => {
   //   res.status(500).json({ success: false, message: err.message });
   // }
   try {
+    await checkPrinterReady(PRINTER_NAME);
     const base64Data = req.body.image.replace(/^data:image\/png;base64,/, "");
     const imagePath = path.join(__dirname, "print.png");
 
@@ -100,7 +116,7 @@ router.post("", async (req, res) => {
     stream.on("finish", async () => {
       try {
         await print(pdfPath, {
-          printer: "EPSON TM-T82 Receipt (v)", // Ganti sesuai nama printer
+          printer: PRINTER_NAME, // Ganti sesuai nama printer
         });
         res.json({ success: true, message: "Printed successfully" });
       } catch (err) {
@@ -114,7 +130,7 @@ router.post("", async (req, res) => {
     // });
   } catch (err) {
     console.error("Print error:", err);
-    res.status(500).send({ error: "Failed to print" });
+    res.status(500).json({ error: "Failed to print" });
   }
 });
 

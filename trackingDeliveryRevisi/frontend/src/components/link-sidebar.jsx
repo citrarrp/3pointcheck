@@ -268,8 +268,8 @@ const Sidebar_Link = [
   // },
   {
     id: 10,
-    routes: "/scanAbsensi",
-    name: "Scan Absensi Truck",
+    routes: "/absensi",
+    name: "Absensi Truck",
     icon: {
       fill: <FaAddressCard size={23} />,
       outline: <FaRegAddressCard size={23} />,

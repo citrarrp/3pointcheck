@@ -98,7 +98,7 @@ function Excel() {
       .toLowerCase();
 
   const matchKodeCustomer = (kode, target) => {
-    if (!kode || !target) return false;
+    if (!kode || !target || kode === "") return false;
 
     const cleanedKode = kode.toLowerCase();
     const cleanedTarget = target.toLowerCase();
@@ -124,7 +124,13 @@ function Excel() {
   const findBestMatchedSOD = (data, selectedCustomerRaw) => {
     const normalizedTarget = normalize(selectedCustomerRaw);
 
-    // console.log(normalizedTarget);
+    console.log(
+      normalizedTarget,
+      "ini cek kode",
+      data.find((item) =>
+        matchKodeCustomer(item.kodeCustomer, normalizedTarget)
+      )
+    );
 
     const byKodeCustomer = data.find((item) =>
       matchKodeCustomer(item.kodeCustomer, normalizedTarget)
@@ -134,6 +140,7 @@ function Excel() {
 
     if (byKodeCustomer) return byKodeCustomer;
 
+    console.log("kesini");
     // 2. Kalau gagal, pakai fuzzy match customerName
     const byCustomerName = data.find((item) => {
       const cleanedItem = normalize(item.customerName);
@@ -142,9 +149,16 @@ function Excel() {
 
       const isSensitive = /\s\d/.test(item.customerName.toLowerCase());
       if (isSensitive) {
+        if (cleanedItem.includes("assy") || normalizedTarget.includes("assy")) {
+          return (
+            normalizedTarget.includes(cleanedItem) ||
+            cleanedItem.includes(normalizedTarget)
+          );
+        }
         return normalizedTarget === cleanedItem;
       }
 
+      console.log(item.customerName, cleanedItem, "ini di angka");
       return (
         normalizedTarget.includes(cleanedItem) ||
         cleanedItem.includes(normalizedTarget)
@@ -500,10 +514,11 @@ function Excel() {
 
           console.log(parsedNew.format("YYYY-MM-DD HH:mm:ss"), "contoh nput");
           const formats = [
-            "DD/MM/YYYY",
-            "MM/DD/YYYY",
             "M/D/YYYY",
             "D/M/YYYY",
+            "DD/MM/YYYY",
+            "MM/DD/YYYY",
+
             "YYYY-MM-DD",
             "DD-MM-YYYY",
             "D-M-YYYY",
@@ -535,6 +550,15 @@ function Excel() {
 
               const isSensitive = /\s\d/.test(cleanCustomer);
               if (isSensitive) {
+                if (
+                  cleanCustomer.includes("assy") ||
+                  cleanCustomerName.includes("assy")
+                ) {
+                  return (
+                    cleanCustomer.includes(cleanCustomerName) ||
+                    cleanCustomerName.includes(cleanCustomer)
+                  );
+                }
                 return cleanCustomerName === cleanCustomer;
               }
 
@@ -597,32 +621,68 @@ function Excel() {
             //       .join(separator);
             //   });
 
-            const selectedData = excelData.map((row) => {
-              console.log("kesini", selectedColumns);
+            // const selectedData = excelData.map((row) => {
+            //   console.log("kesini", selectedColumns);
 
-              const values = selectedColumns
-                .filter((_, index) => index !== 0) // skip kolom pertama
-                .map((col) => {
-                  let value = formatValue(row[col]);
+            //   const values = selectedColumns
+            //     .filter((_, index) => index !== 0) // skip kolom pertama
+            //     .map((col) => {
+            //       let value = formatValue(row[col]);
 
-                  if (col === "order_delivery") {
-                    const match = value.match(/OD\s+([A-Z0-9]+)/i);
-                    if (match) {
-                      value = match[1];
-                    } else {
-                      value = value.trim().split(" ").pop().replace(/\W+$/, "");
-                    }
-                  } else {
-                    value = extractColon(value);
-                  }
+            //       if (col === "order_delivery") {
+            //         const match = value.match(/OD\s+([A-Z0-9]+)/i);
+            //         if (match) {
+            //           value = match[1];
+            //         } else {
+            //           value = value.trim().split(" ").pop().replace(/\W+$/, "");
+            //         }
+            //       } else {
+            //         value = extractColon(value);
+            //       }
 
-                  console.log(value);
-                  return value;
+            //       console.log(value);
+            //       return value;
+            //     });
+
+            //   console.log(values, "nilai select");
+            //   return values.join(separator ?? "");
+            // });
+            const selectedData = Object.entries(groupedByCustomer).map(
+              ([customerName, rows]) => {
+                // proses setiap customer secara terpisah
+                const customerRows = rows.map((row) => {
+                  const values = selectedColumns
+                    .filter((_, index) => index !== 0) // skip kolom pertama
+                    .map((col) => {
+                      let value = formatValue(row[col]);
+
+                      if (col === "order_delivery") {
+                        const match = value.match(/OD\s+([A-Z0-9]+)/i);
+                        if (match) {
+                          value = match[1];
+                        } else {
+                          value = value
+                            .trim()
+                            .split(" ")
+                            .pop()
+                            .replace(/\W+$/, "");
+                        }
+                      } else {
+                        value = extractColon(value);
+                      }
+
+                      return value;
+                    });
+
+                  return values.join(separator ?? "");
                 });
 
-              console.log(values, "nilai select");
-              return values.join(separator ?? "");
-            });
+                return {
+                  customerName,
+                  data: customerRows,
+                };
+              }
+            );
 
             const sourceLabelMapping = {};
             Object.entries(mapping).forEach(([schema, excelCol]) => {
@@ -737,6 +797,14 @@ function Excel() {
 
             if (!customerList || !customer) return false;
 
+            selectedData.map((data) =>
+              console.log(
+                data,
+                data.customerName ===
+                  customerName.replace(/[ \-_/]/g, " ").toLowerCase()
+              )
+            );
+
             const customerName = String(customerList[0]);
 
             console.log(selectedFields, "ini isi fields", dataReal);
@@ -748,7 +816,12 @@ function Excel() {
                     data.customerName ===
                     customerName.replace(/[ \-_/]/g, " ").toLowerCase()
                 )?.data ?? [],
-              selectedData,
+              selectedData:
+                selectedData.find(
+                  (data) =>
+                    data.customerName ===
+                    customerName.replace(/[ \-_/]/g, " ").toLowerCase()
+                )?.data ?? [],
               sourceValueLabel: sourceLabelMapping,
               separator,
               selectedColumns,
@@ -782,6 +855,7 @@ function Excel() {
 
         resetAllStates();
       } else {
+        console.log("dsiini harusnya");
         const filteredData = excelData.filter((row) => {
           return (
             row[selectedCustomer] && String(row[selectedCustomer]).trim() !== ""
@@ -924,10 +998,11 @@ function Excel() {
               }
 
               const formats = [
-                "DD/MM/YYYY",
-                "MM/DD/YYYY",
                 "M/D/YYYY",
                 "D/M/YYYY",
+                "DD/MM/YYYY",
+                "MM/DD/YYYY",
+
                 "YYYY-MM-DD",
                 "DD-MM-YYYY",
                 "D-M-YYYY",
@@ -1254,6 +1329,7 @@ function Excel() {
               acc[key] = 0;
               return acc;
             }, {});
+            console.log(customerList, "disini masuk");
 
             // console.log(
             //   uniquePartName,
@@ -1369,7 +1445,8 @@ function Excel() {
         const results = await Promise.all(promises);
         const allSuccess = results.every((r) => r.success);
         if (allSuccess) {
-          alert("Berhasil Menambahkan Data!");
+          console.log(results);
+          // alert("Berhasil Menambahkan Data!");
         } else {
           alert("Sebagian data gagal ditambahkan.");
         }

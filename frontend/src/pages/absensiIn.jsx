@@ -217,45 +217,50 @@
 // };
 
 // export default AbsensiPage;
-
 "use client";
 import React, { useEffect, useState } from "react";
-import QRCode from "react-qr-code";
 import CryptoJS from "crypto-js";
 import api from "../utils/api";
 
 const AbsensiInPage = () => {
   const [milkrunOrDirect, setMilkrunOrDirect] = useState("");
-  // const [scanType, setScanType] = useState("");
+  const [selectedCycle, setSelectedCycle] = useState("");
+  const [scanType, setScanType] = useState("");
   const [selectedTruck, setSelectedTruck] = useState(null);
-  const [trucks, setTruck] = useState([]);
-  const [qrValue, setQrValue] = useState("");
+  const [trucks, setTrucks] = useState([]);
+  const [cycles, setCycles] = useState([]);
+  const [status, setStatus] = useState(null); // "success" | "error" | null
 
   useEffect(() => {
     const fetchTruck = async () => {
       try {
         const res = await api.get("/absensi/trucks");
-        setTruck(res.data.data);
+        setTrucks(res.data.data);
+
+        // Ambil daftar cycle unik dari customerName/vendor
+        const cycleList = [
+          ...new Set(res.data.data.map((tr) => tr.customerName || tr.vendor)),
+        ];
+        setCycles(cycleList);
       } catch (err) {
         console.error("Gagal mengambil data", err);
       }
     };
     fetchTruck();
+  }, []);
 
-    const generateQRValue = () => {
-      if (!selectedTruck) return "";
-
+  const handlePostAbsensi = async (truck) => {
+    try {
       const time = new Date().toISOString();
       const payload = {
-        // return JSON.stringify({
-        id: selectedTruck._id,
-        truckName: selectedTruck.truckName,
-        route: selectedTruck.route,
-        destination: selectedTruck.destination,
+        id: truck._id,
+        truckName: truck.truckName,
+        route: truck.route,
+        destination: truck.destination,
         type: milkrunOrDirect,
-        scanType: "In",
+        scanType: scanType,
+        cycle: selectedCycle,
         timestamp: time,
-        // });
       };
 
       const payloadString = JSON.stringify(
@@ -265,161 +270,142 @@ const AbsensiInPage = () => {
       const secret = import.meta.env.VITE_QR_SECRET;
       const hmac = CryptoJS.HmacSHA512(payloadString, secret);
 
-      // console.log(secret, "teks", payloadString, time);
-      // console.log(
-      //   "FRONTEND SECRET:",
-      //   JSON.stringify(import.meta.env.VITE_QR_SECRET)
-      // );
-
-      return JSON.stringify({
+      const data = {
+        ...payload,
         h: hmac.toString(CryptoJS.enc.Hex),
         n: CryptoJS.lib.WordArray.random(16).toString(),
-        id: selectedTruck._id,
-        truckName: selectedTruck.truckName,
-        route: selectedTruck.route,
-        destination: selectedTruck.destination,
-        type: milkrunOrDirect,
-        scanType: "In",
-        timestamp: time,
-      });
-    };
+      };
 
-    if (selectedTruck) {
-      setQrValue(generateQRValue());
-
-      const interval = setInterval(() => {
-        setQrValue(generateQRValue());
-      }, 120000);
-
-      return () => clearInterval(interval);
+      const res = await api.post("/absensi/qr", data);
+      if (res.data.success) {
+        setStatus("success");
+      } else {
+        setStatus("error");
+      }
+    } catch (err) {
+      console.error(err);
+      setStatus("error");
     }
-  }, [selectedTruck, milkrunOrDirect]);
+  };
 
-  // const handleReset = () => {
-  //   setMilkrunOrDirect(" ");
-  //   setScanType("");
-  //   setSelectedTruck(null);
-  // };
+  // Trigger otomatis POST jika semua pilihan sudah terisi
+  useEffect(() => {
+    if (milkrunOrDirect && selectedCycle && scanType && selectedTruck) {
+      handlePostAbsensi(selectedTruck);
+    }
+  }, [milkrunOrDirect, selectedCycle, scanType, selectedTruck]);
+
+  if (status === "success") {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-green-600 text-2xl font-bold">
+        Absensi Berhasil ✔
+      </div>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-red-600 text-2xl font-bold">
+        Absensi Gagal ✖
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen py-2 px-4 max-w-screen mx-auto">
-      <div className="space-y-6">
-        {/* <button
-          onClick={handleReset}
-          className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-        >
-          Buat Absensi Baru
-        </button> */}
-        {/* {  ( */}
-        <div className="space-y-6">
-          <h2 className="text-lg font-bold">Pilih Jenis Pengiriman</h2>
-          <div className="flex gap-4">
+    <div className="min-h-screen py-4 px-4 max-w-screen mx-auto space-y-6">
+      {/* Step 1: Pilih Jenis Pengiriman */}
+      <div>
+        <h2 className="text-lg font-bold mb-2">Pilih Jenis Pengiriman</h2>
+        <div className="flex gap-4">
+          {["Milkrun", "Direct"].map((type) => (
             <button
-              onClick={() => setMilkrunOrDirect("Milkrun")}
+              key={type}
+              onClick={() => setMilkrunOrDirect(type)}
               className={`px-4 py-2 rounded-lg transition-colors ${
-                milkrunOrDirect === "Milkrun"
+                milkrunOrDirect === type
                   ? "bg-blue-600 text-white"
                   : "bg-blue-100 text-blue-800 hover:bg-blue-200"
               }`}
             >
-              Milkrun
+              {type}
             </button>
-            <button
-              onClick={() => setMilkrunOrDirect("Direct")}
-              className={`px-4 py-2 rounded-lg transition-colors ${
-                milkrunOrDirect === "Direct"
-                  ? "bg-green-600 text-white"
-                  : "bg-green-100 text-green-800 hover:bg-green-200"
-              }`}
-            >
-              Direct
-            </button>
-          </div>
+          ))}
         </div>
-        {/* )} */}
-        {milkrunOrDirect && (
-          <div className="space-y-6">
-            <h2 className="text-lg font-bold">Pilih Cycle</h2>
-            <div className="flex gap-4">
+      </div>
+
+      {/* Step 2: Pilih Cycle */}
+      {milkrunOrDirect && (
+        <div>
+          <h2 className="text-lg font-bold mb-2">Pilih Cycle</h2>
+          <div className="flex gap-4 flex-wrap">
+            {cycles.map((cycle, idx) => (
               <button
-                // onClick={() => setScanType("In")}
-                className={`px-4 py-2 rounded-lg transition-colors 
-                    ? "bg-blue-600 text-white"
-                    : "bg-blue-100 text-blue-800 hover:bg-blue-200"
+                key={idx}
+                onClick={() => setSelectedCycle(cycle)}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  selectedCycle === cycle
+                    ? "bg-purple-600 text-white"
+                    : "bg-purple-100 text-purple-800 hover:bg-purple-200"
                 }`}
               >
-                Cycle 1
+                {cycle}
               </button>
-          
-            </div>
+            ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {milkrunOrDirect && (
-          <div className="space-y-6">
-            <h2 className="text-lg font-bold">Pilih Nama Truk</h2>
-            <div className="grid gap-4">
-              {trucks
-                .filter(
-                  (tr) =>
-                    tr.typeTruck.toLowerCase() === milkrunOrDirect.toLowerCase()
-                )
-                .map((truck) => (
-                  <button
-                    key={truck._id}
-                    onClick={() => setSelectedTruck(truck)}
-                    className={`px-4 py-3 rounded-lg transition-colors text-left ${
-                      selectedTruck?._id === truck._id
-                        ? "bg-gray-600 text-white"
-                        : "bg-gray-100 hover:bg-gray-200"
-                    }`}
-                  >
-                    {truck.truckName}
-                  </button>
-                ))}
-            </div>
+      {/* Step 3: Pilih Pickup Status */}
+      {selectedCycle && (
+        <div>
+          <h2 className="text-lg font-bold mb-2">Pickup Status</h2>
+          <div className="flex gap-4">
+            {["In", "Out"].map((type) => (
+              <button
+                key={type}
+                onClick={() => setScanType(type)}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  scanType === type
+                    ? "bg-green-600 text-white"
+                    : "bg-green-100 text-green-800 hover:bg-green-200"
+                }`}
+              >
+                {type}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {selectedTruck && (
-          <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h2 className="text-lg font-semibold mb-4">Informasi Absensi</h2>
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                <div>
-                  <p className="text-sm text-gray-500">Nama Truk</p>
-                  <p className="font-medium">{selectedTruck.truckName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Route</p>
-                  <p className="font-medium">{selectedTruck.route}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Tujuan</p>
-                  <p className="font-medium">{selectedTruck.destination}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Jenis</p>
-                  <p className="font-medium capitalize">{milkrunOrDirect}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Scan</p>
-                  <p className="font-medium capitalize">In</p>
-                </div>
-                {/* <div>
-                  <p className="text-sm text-gray-500">Waktu</p>
-                  <p className="font-medium">
-                    {new Date().toLocaleTimeString()}
-                  </p>
-                </div> */}
-              </div>
-
-              <div className="flex justify-center p-4 bg-white rounded border w-fit">
-                <QRCode value={qrValue} size={230} />
-              </div>
-            </div>
+      {/* Step 4: Pilih Truck */}
+      {scanType && (
+        <div>
+          <h2 className="text-lg font-bold mb-2">Pilih Nama Truk</h2>
+          <div className="grid gap-4">
+            {trucks
+              .filter(
+                (tr) =>
+                  tr.typeTruck.toLowerCase() ===
+                    milkrunOrDirect.toLowerCase() &&
+                  (tr.customerName === selectedCycle ||
+                    tr.vendor === selectedCycle)
+              )
+              .map((truck) => (
+                <button
+                  key={truck._id}
+                  onClick={() => setSelectedTruck(truck)}
+                  className={`px-4 py-3 rounded-lg transition-colors text-left ${
+                    selectedTruck?._id === truck._id
+                      ? "bg-gray-600 text-white"
+                      : "bg-gray-100 hover:bg-gray-200"
+                  }`}
+                >
+                  {truck.truckName}
+                </button>
+              ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

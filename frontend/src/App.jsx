@@ -116,10 +116,10 @@ function App() {
               path="/tracking/:customerId/:cycleNumber"
               element={<DataTrackingTable />}
             />
-            {/* <Route path="/absensi" element={<AbsensiPage />} /> */}
-            <Route path="/absensi/In" element={<AbsensiInPage />} />
-            <Route path="/absensi/Out" element={<AbsensiOutPage />} />
-            <Route path="/scanAbsensi" element={<ScannerPage />} />
+            {/* <Route path="/absensi" element={<AbsensiP />} /> */}
+            <Route path="/absensi" element={<AbsensiInPage />} />
+            {/* <Route path="/absensi/Out" element={<AbsensiOutPage />} /> */}
+            {/* <Route path="/scanAbsensi" element={<ScannerPage />} /> */}
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/forget-password" element={<ChangePasswordPage />} />
           </Route>

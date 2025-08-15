@@ -13,6 +13,7 @@ import cookieParser from "cookie-parser";
 import partMaterialRoutes from "./routes/partmaterial.router.js";
 import productRoutes from "./routes/tag.router.js";
 import printRoutes from "./routes/print.router.js";
+import truckRoutes from "./routes/truck.router.js";
 import "./jobs/node-cron.js";
 // import escpos from "escpos";
 // import USB from "escpos-usb";
@@ -305,6 +306,7 @@ app.use("/api/track", trackingRoutes);
 app.use("/api/materials", partMaterialRoutes);
 app.use("/api/production", productRoutes);
 app.use("/api/print-tag", printRoutes);
+app.use("/api/trucks", truckRoutes);
 app.listen(5000, () => {
   db();
   console.log("Server listening on port 5000");
