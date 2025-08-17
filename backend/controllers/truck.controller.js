@@ -26,41 +26,116 @@ export const getTruckById = async (req, res) => {
 };
 
 export const createTruck = async (req, res) => {
-  try {
-    const {
-      partnerName,
-      customerName,
-      route,
-      destination,
-      typeTruck,
-      cycleSteps,
-      lastSyncFromSOD,
-    } = req.body;
+  // try {
+  //   const {
+  //     partnerName,
+  //     route,
+  //     destination,
+  //     typeTruck,
+  //     ETACust,
+  //     // cycleSteps,
+  //     // lastSyncFromSOD,
+  //   } = req.body;
 
-    const customerDoc = await Tes.findOne({ customerName });
-    if (!customerDoc) {
-      return res.status(404).json({
-        message: `Customer dengan nama "${customerName}" tidak ditemukan`,
-      });
+  //   const filter = {
+  //     destination,
+  //   };
+
+  //   let results = {};
+  //   const customerDoc = await Tes.findOne({ nama: destination });
+  //   if (!customerDoc) {
+  //     return res.status(404).json({
+  //       message: `Customer dengan nama "${destination}" tidak ditemukan`,
+  //     });
+  //   }
+
+  //   // const newTruck = new trucks({
+  //   //   partnerName,
+  //   //   route,
+  //   //   destination,
+  //   //   typeTruck,
+  //   //   ETACust,
+  //   //   // cycleSteps,
+  //   //   // lastSyncFromSOD,
+  //   //   customerId: customerDoc._id,
+  //   // });
+
+  //   // const savedTruck = await newTruck.save();
+  //   // res.status(201).json(savedTruck);
+  //   const update = {
+  //     $set: {
+  //       partnerName,
+  //       typeTruck,
+  //       route,
+  //       ETACust,
+  //     },
+  //   };
+
+  //   const options = { upsert: true, new: true };
+  //   const result = await trucks.findOneAndUpdate(filter, update, options);
+  //   results.push(result);
+
+  //   res
+  //     .status(200)
+  //     .json({ message: "Berhasil Mengunggah Data!", data: results });
+  // } catch (error) {
+  //   res
+  //     .status(400)
+  //     .json({ message: "Gagal membuat truck baru", error: error.message });
+  // }
+  try {
+    const truckData = req.body; // array of trucks
+
+    // const bulkOps = truckData.map((truck) => ({
+    //   updateOne: {
+    //     filter: { destination: truck.destination },
+    //     update: { $set: truck },
+    //     upsert: true,
+    //   },
+    // }));
+
+    // await trucks.bulkWrite(bulkOps);
+    const results = [];
+
+    for (const truck of truckData) {
+      try {
+        const customerDoc = await Tes.findOne({ nama: truck.destination });
+        if (!customerDoc) {
+          results.push({
+            destination: truck.destination,
+            status: "failed",
+            reason: "Customer not found",
+          });
+          continue;
+        }
+
+        const updateData = { ...truck, customerId: customerDoc._id };
+
+        await trucks.updateOne(
+          { destination: truck.destination },
+          { $set: updateData },
+          { upsert: true }
+        );
+
+        results.push({
+          destination: truck.destination,
+          status: "success",
+        });
+      } catch (err) {
+        results.push({
+          destination: truck.destination,
+          status: "error",
+          reason: err.message,
+        });
+      }
     }
 
-    const newTruck = new trucks({
-      partnerName,
-      customerName,
-      route,
-      destination,
-      typeTruck,
-      cycleSteps,
-      lastSyncFromSOD,
-      customerId: customerDoc._id,
-    });
-
-    const savedTruck = await newTruck.save();
-    res.status(201).json(savedTruck);
-  } catch (error) {
+    res.json({ message: "Upsert trucks success", count: truckData.length });
+  } catch (err) {
+    console.error(err);
     res
-      .status(400)
-      .json({ message: "Gagal membuat truck baru", error: error.message });
+      .status(500)
+      .json({ message: "Error upserting trucks", error: err.message });
   }
 };
 
@@ -68,21 +143,25 @@ export const updateTruck = async (req, res) => {
   try {
     const {
       partnerName,
-      customerName,
       route,
       destination,
       typeTruck,
-      cycleSteps,
-      lastSyncFromSOD,
+      ETACust,
+      // cycleSteps,
+      // lastSyncFromSOD,
     } = req.body;
 
-    if (customerName) {
-      const customerDoc = await Tes.findOne({ customerName });
+    let customerId = null;
+
+    console.log(destination);
+    if (destination) {
+      const customerDoc = await Tes.findOne({ nama: "TMMIN KARAWANG 1" });
       if (!customerDoc) {
         return res.status(404).json({
-          message: `Customer dengan nama "${customerName}" tidak ditemukan`,
+          message: `Customer dengan nama "${destination}" tidak ditemukan`,
         });
       }
+      console.log(customerDoc);
       customerId = customerDoc._id;
     }
 
@@ -90,16 +169,17 @@ export const updateTruck = async (req, res) => {
       req.params.id,
       {
         partnerName,
-        customerName,
         route,
         destination,
         typeTruck,
-        cycleSteps,
-        lastSyncFromSOD,
+        ETACust,
+        // cycleSteps,
+        // lastSyncFromSOD,
         ...(customerId && { customerId }),
       },
       { new: true, runValidators: true }
     );
+    console.log(updatedTruck);
 
     if (!updatedTruck)
       return res.status(404).json({ message: "Truck tidak ditemukan" });

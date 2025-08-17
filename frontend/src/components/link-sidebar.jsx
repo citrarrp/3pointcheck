@@ -343,7 +343,7 @@ const Sidebar_Link = [
 
 export default function SideBarLink() {
   const pathname = usePathname();
-  const { user, loading } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
   // if (loading) {
   //     return (
   //         <div>

@@ -1,31 +1,25 @@
 import mongoose from "mongoose";
-
-const CycleStepSchema = new mongoose.Schema(
-  {
-    cycleNumber: {
-      type: String,
-      required: true,
-    },
-    loadingTime: Date,
-    ETA: Date,
-    ETD: Date,
-    ETA_Cust: Date,
-  },
-  { _id: false }
-);
+// const CycleStepSchema = new mongoose.Schema(
+//   {
+//     cycleNumber: {
+//       type: String,
+//       required: true,
+//     },
+//     loadingTime: Date,
+//     ETA: Date,
+//     ETD: Date,
+//     ETA_Cust: Date,
+//   },
+//   { _id: false }
+// );
 
 const TruckSchema = new mongoose.Schema({
   partnerName: {
     type: String,
     required: true,
   },
-  customerName: {
-    type: String,
-    required: true,
-  },
   route: {
     type: String,
-    required: true,
   },
   destination: {
     type: String,
@@ -36,11 +30,12 @@ const TruckSchema = new mongoose.Schema({
     enum: ["Milkrun", "Direct"],
     required: true,
   },
-  cycleSteps: [CycleStepSchema],
-  lastSyncFromSOD: {
-    type: Date,
-    default: null,
-  },
+  // cycleSteps: [CycleStepSchema],
+  // lastSyncFromSOD: {
+  //   type: Date,
+  //   default: null,
+  // },
+  ETACust: String,
   customerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "tes",

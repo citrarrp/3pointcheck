@@ -29,6 +29,7 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
   const [isConnected, setIsConnected] = useState(false);
 
   const [tag, setTag] = useState([]);
+  
   const checkProsesSekarang = async () => {
     const now = moment();
     return shiftOptions.find((item) => {
@@ -347,38 +348,36 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
         alert(`Error iMin: ${err.message}`);
       }
       try {
-        if (sunmi) {
-          setPrintStatus("Mencoba konek ke Sunmi...");
-          await sunmi.launchPrinterService();
-          sunmi.init();
+        setPrintStatus("Mencoba konek ke Sunmi...");
+        await sunmi.launchPrinterService();
+        sunmi.init();
 
-          const status = await sunmi.printer.queryApi.getStatus();
-          console.log("Status Sunmi:", status);
-          if (status !== 1 && status !== 2)
-            throw new Error("Printer Sunmi tidak siap");
+        const status = await sunmi.printer.queryApi.getStatus();
+        console.log("Status Sunmi:", status);
+        if (status !== 1 && status !== 2)
+          throw new Error("Printer Sunmi tidak siap");
 
-          const img = new Image();
-          img.crossOrigin = "Anonymous";
-          img.src = dataUrl;
-          img.onload = async () => {
-            try {
-              await sunmi.printer.printBitmap(img, (res) =>
-                console.log("Hasil print Sunmi:", res)
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = dataUrl;
+        img.onload = async () => {
+          try {
+            await sunmi.printer.printBitmap(img, (res) =>
+              console.log("Hasil print Sunmi:", res)
+            );
+            if (typeof sunmi.printer.cutPaper === "function") {
+              sunmi.printer.cutPaper((res) =>
+                console.log("Hasil cut Sunmi:", res)
               );
-              if (typeof sunmi.printer.cutPaper === "function") {
-                sunmi.printer.cutPaper((res) =>
-                  console.log("Hasil cut Sunmi:", res)
-                );
-              }
-              setPrintStatus("Cetak Sunmi selesai");
-            } catch (err) {
-              console.error("Gagal cetak Sunmi:", err);
-              alert(`Error cetak Sunmi: ${err.message}`);
-              fallbackWebPrint(processedCanvas, paperWidth);
             }
-          };
-          return;
-        }
+            setPrintStatus("Cetak Sunmi selesai");
+          } catch (err) {
+            console.error("Gagal cetak Sunmi:", err);
+            alert(`Error cetak Sunmi: ${err.message}`);
+            fallbackWebPrint(processedCanvas, paperWidth);
+          }
+        };
+        return;
       } catch (err) {
         console.warn("Error Sunmi:", err);
         alert(`Error Sunmi: ${err.message}`);

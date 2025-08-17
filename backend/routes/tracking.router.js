@@ -4,6 +4,7 @@ import {
   getCycleDatabyId,
   getDatabyIdCycle,
   getDatabyIdCycleDN,
+  getCycleUniqueByDateCust,
   getDataTracking,
   postChecking,
   postFinishPreparation,
@@ -16,6 +17,7 @@ const router = express.Router();
 
 router.get("/:id/:cycleNumber", getDatabyIdCycle);
 router.get("/:id/:cycleNumber/:dn_number", getDatabyIdCycleDN);
+router.get("/unik", getCycleUniqueByDateCust);
 router.get("/", getDataTracking);
 router.put("/", updatePrepareDatabyDNCustCycle);
 router.put("/finish", postInspection);

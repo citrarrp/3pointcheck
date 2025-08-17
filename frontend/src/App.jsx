@@ -31,6 +31,7 @@ import PageUniqueMaterial from "./pages/materialPage.jsx";
 import ProductionHome from "./middlewares/productionOnly.jsx";
 import ChangePasswordPage from "./pages/changePWPage.jsx";
 import InputSmart from "./components/threePointcheck.jsx";
+import TrucksDataUpload from "./pages/uploadMasterTruck.jsx";
 // import AbsensiPage from "./pages/absensiIn.jsx";
 function App() {
   return (
@@ -118,6 +119,7 @@ function App() {
             />
             {/* <Route path="/absensi" element={<AbsensiP />} /> */}
             <Route path="/absensi" element={<AbsensiInPage />} />
+            <Route path="/masterTruck" element={<TrucksDataUpload />} />
             {/* <Route path="/absensi/Out" element={<AbsensiOutPage />} /> */}
             {/* <Route path="/scanAbsensi" element={<ScannerPage />} /> */}
             <Route path="/register" element={<RegisterPage />} />

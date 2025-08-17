@@ -3,6 +3,9 @@ import tes from "../models/tes.js";
 import trackingDelv from "../models/tracking.js";
 import crypto from "crypto";
 import moment from "moment-timezone";
+import trucks from "../models/truck.js";
+import Tes from "../models/tes.js";
+import mongoose from "mongoose";
 
 export const updatePrepareDatabyDNCustCycle = async (req, res) => {
   try {
@@ -383,15 +386,103 @@ export const postFinishPreparation = async (req, res) => {
       });
     }
 
+    const dnNumbers = existingData.map((item) => item.dnNumber);
+    await trackingDelv.updateMany(
+      {
+        dnNumber: { $in: dnNumbers },
+        nama: "Ready To Shipping",
+      },
+      { $set: { verificationCode: code } }
+    );
     const dnAll = existingData.map((item) => `${item.dnNumber}`).join(", ");
 
     return res.status(200).json({
       success: true,
       message: "Berhasil Scan!",
-      data: `${dnAll} dari customer ${existingData[0].customerId.nama} Cycle ${existingData[0].cycleNumber} Ready To Shipping`,
+      data: `${dnAll} dari customer ${existingData[0].customerId.nama} Cycle ${existingData[0].cycleNumber} - Preparation Completed`,
     });
   } catch (error) {
     console.log("error in fetching Data:", error.message);
+    return res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+export const postReadyToShipping = async (req, res) => {
+  const { dnNumber } = req.body;
+  try {
+    const existingData = await trackingDelv
+      .find({
+        nama: "Ready To Shipping",
+        verificationCode: { $ne: null },
+        dnNumber,
+      })
+      .populate("customerId", "nama")
+      .lean();
+
+    if (!existingData.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Data tidak ditemukan!",
+      });
+    }
+
+    const now = moment().tz("Asia/Jakarta");
+
+    const updatePromises = existingData.map(async (item) => {
+      const waktuStandar = moment(new Date(item.waktuStandar))
+        .tz("Asia/Jakarta")
+        .format("HH:mm");
+      const waktuAktual = now.format("HH:mm");
+      const diffMinutes = moment(waktuAktual, "HH:mm").diff(
+        moment(waktuStandar, "HH:mm"),
+        "minutes"
+      );
+
+      let statusWaktu;
+      let delay;
+      if (diffMinutes > 5) statusWaktu = "Delay";
+      else if (diffMinutes < -5) statusWaktu = "Advanced";
+      else statusWaktu = "On Time";
+
+      if (diffMinutes < -5) delay = `+${-1 * diffMinutes} menit`;
+      else if (diffMinutes > 5) delay = `-${diffMinutes} menit`;
+      else delay = `0 menit`;
+
+      return trackingDelv.updateOne(
+        { _id: item._id },
+        {
+          $set: {
+            status: statusWaktu,
+            persentase: 100,
+            waktuAktual: now,
+            delay,
+            updatedAt: now.toDate(),
+          },
+        }
+      );
+    });
+
+    const updateReady = await Promise.all(updatePromises);
+    const totalModified = updateReady.reduce(
+      (sum, r) => sum + r.modifiedCount,
+      0
+    );
+
+    if (totalModified === 0) {
+      return res.status(410).json({
+        success: false,
+        message: "QR Ready To Shipping sudah pernah di-scan!",
+      });
+    }
+
+    const dnAll = existingData.map((item) => item.dnNumber).join(", ");
+    return res.status(200).json({
+      success: true,
+      message: "Berhasil Scan Ready To Shipping!",
+      data: `${dnAll} dari customer ${existingData[0].customerId.nama} Cycle ${existingData[0].cycleNumber} - Ready To Shipping Completed`,
+    });
+  } catch (error) {
+    console.log("error in ReadyToShipping:", error.message);
     return res.status(500).json({ success: false, message: "Server Error" });
   }
 };
@@ -482,6 +573,44 @@ export const getCycleDatabyId = async (req, res) => {
   }
 };
 
+export const getCycleUniqueByDateCust = async (req, res) => {
+  try {
+    const { customerName, tanggal } = req.query;
+
+    const startOfDay = moment
+      .tz(tanggal, "Asia/Jakarta")
+      .startOf("day")
+      .toDate();
+    const endOfDay = moment.tz(tanggal, "Asia/Jakarta").endOf("day").toDate();
+
+    const customer = await Tes.findOne({ nama: customerName });
+    if (!customer) {
+      return res.status(404).json({ message: "Customer tidak ditemukan" });
+    }
+
+    const tracks = await trackingDelv.find({
+      customerId: new mongoose.Types.ObjectId(customer._id),
+      tanggal: {
+        $gte: startOfDay,
+        $lt: endOfDay,
+      },
+    });
+
+    const cycles = [...new Set(tracks.map((t) => t.cycleNumber))].filter(
+      Boolean
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Data berhasil diambil",
+      data: cycles,
+    });
+  } catch (error) {
+    console.log("error in fetching Data Cycle:", error.message);
+    return res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
 // export const updateDataTrackingProcess = async (req, res) => {
 //   const {nama, dnNumber, cycleNumber, customerId, waktuAktual} = req.body
 
@@ -538,7 +667,7 @@ export const getDataTracking = async (req, res) => {
   if (tanggal) {
     // const targetDate = moment.utc(tanggal, "Asia/Jakarta");
     // const nextDay = moment.utc(targetDate, "Asia/Jakarta");
-    console.log(tanggal, targetDate, nextDay);
+    // console.log(tanggal, targetDate, nextDay);
     // nextDay.setDate(targetDate.getDate() + 1);
     // filter.tanggal = { $gte: targetDate, $lt: nextDay };
 

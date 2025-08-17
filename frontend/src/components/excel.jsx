@@ -32,6 +32,24 @@ function Excel() {
     labelSupplier: "",
     labelLength: 0,
   });
+  const formats = [
+    "M/D/YYYY",
+    "D/M/YYYY",
+    "DD/MM/YYYY",
+    "MM/DD/YYYY",
+    "YYYY-MM-DD",
+    "DD-MM-YYYY",
+    "D-M-YYYY",
+    "DD.MM.YYYY",
+    "DD.MM.YY",
+    "D.M.YY",
+    "D.M.YYYY",
+    "MMMM D, YYYY",
+    "D MMMM YYYY",
+    "D MMM YYYY",
+    moment.ISO_8601,
+  ];
+  const [selectedFormat, setSelectedFormat] = useState(formats[0]);
 
   const fetchSchemaFields = async () => {
     try {
@@ -43,7 +61,7 @@ function Excel() {
     }
   };
   useEffect(() => {
-    console.log("selectedFields updated:", selectedFields);
+    console.log("selectedFields updated:", selectedFields, selectedFormat);
   }, [selectedFields]);
 
   const fetchSODDiagram = async () => {
@@ -284,10 +302,25 @@ function Excel() {
     //   );
     // });
     const headerRowIndex = findHeaderRowIndex(rawData);
-    const headers = rawData[headerRowIndex];
+
+    if (headerRowIndex === -1) return;
+
+    const rawHeaders = rawData[headerRowIndex];
     const rows = rawData.slice(headerRowIndex + 1);
 
-    // ubah array of array jadi array of object, pakai headers
+    const seen = {};
+    const headers = rawHeaders.map((header) => {
+      let cleanHeader = String(header || "Column").trim();
+      if (seen[cleanHeader]) {
+        const count = seen[cleanHeader]++;
+        cleanHeader = `${cleanHeader} ${count}`;
+      } else {
+        seen[cleanHeader] = 1;
+      }
+      return cleanHeader;
+    });
+
+    console.log(headers, "conoth banyak");
 
     const structuredRows = rows
       .filter((row) =>
@@ -470,6 +503,7 @@ function Excel() {
     setShowSchemaForm(false);
     setSelectedSheet("");
     setSheetNames([]);
+    document.getElementById("dropzone-file").value = "";
   };
   const handleSubmit = async () => {
     try {
@@ -513,29 +547,16 @@ function Excel() {
           );
 
           console.log(parsedNew.format("YYYY-MM-DD HH:mm:ss"), "contoh nput");
-          const formats = [
-            "M/D/YYYY",
-            "D/M/YYYY",
-            "DD/MM/YYYY",
-            "MM/DD/YYYY",
 
-            "YYYY-MM-DD",
-            "DD-MM-YYYY",
-            "D-M-YYYY",
-            "DD.MM.YYYY",
-            "DD.MM.YY",
-            "D.M.YY",
-            "D.M.YYYY",
-            "MMMM D, YYYY",
-            "D MMMM YYYY",
-            "D MMM YYYY",
-            moment.ISO_8601,
-          ];
           // console.log(parsedDate, "tadikedini", parsedDate.isValid());
-          const parsed = moment.tz(val, formats, true, "Asia/Jakarta");
+          const parsed = moment.tz(val, selectedFormat, true, "Asia/Jakarta");
 
           return parsed.isValid() ? parsed : val;
         };
+
+        Object.entries(groupedByCustomer).map(async ([customer, data]) => {
+          console.log(customer, data, "ini contoh isi");
+        });
 
         const promises = Object.entries(groupedByCustomer).map(
           async ([customer, _]) => {
@@ -797,13 +818,13 @@ function Excel() {
 
             if (!customerList || !customer) return false;
 
-            selectedData.map((data) =>
-              console.log(
-                data,
-                data.customerName ===
-                  customerName.replace(/[ \-_/]/g, " ").toLowerCase()
-              )
-            );
+            // selectedData.map((data) =>
+            //   console.log(
+            //     data,
+            //     data.customerName ===
+            //       customerName.replace(/[ \-_/]/g, " ").toLowerCase()
+            //   )
+            // );
 
             const customerName = String(customerList[0]);
 
@@ -997,26 +1018,13 @@ function Excel() {
                 return wib.format("YYYY-MM-DD HH:mm:ss");
               }
 
-              const formats = [
-                "M/D/YYYY",
-                "D/M/YYYY",
-                "DD/MM/YYYY",
-                "MM/DD/YYYY",
-
-                "YYYY-MM-DD",
-                "DD-MM-YYYY",
-                "D-M-YYYY",
-                "DD.MM.YYYY",
-                "DD.MM.YY",
-                "D.M.YY",
-                "D.M.YYYY",
-                "MMMM D, YYYY",
-                "D MMMM YYYY",
-                "D MMM YYYY",
-                moment.ISO_8601,
-              ];
               // console.log(parsedDate, "tadikedini", parsedDate.isValid());
-              const parsed = moment.tz(val, formats, true, "Asia/Jakarta");
+              const parsed = moment.tz(
+                val,
+                selectedFormat,
+                true,
+                "Asia/Jakarta"
+              );
 
               return parsed.isValid() ? parsed : val;
             };
@@ -1694,6 +1702,26 @@ function Excel() {
                     {column}
                   </option>
                 ))}
+            </select>
+          </div>
+        )}
+
+        {fileName && (
+          <div className="mb-8 px-6 bg-gray-50 rounded-lg">
+            <label className="block text-lg font-medium text-gray-600 mb-2">
+              Pilih Format:
+            </label>
+            <select
+              className="w-full p-3 border-2 border-gray-300 rounded-md focus:ring-blue-400 focus:border-blue-400"
+              value={selectedFormat}
+              onChange={(e) => setSelectedFormat(e.target.value)}
+            >
+              <option value="">Pilih </option>
+              {formats.map((format, idx) => (
+                <option key={idx} value={format}>
+                  {format}
+                </option>
+              ))}
             </select>
           </div>
         )}

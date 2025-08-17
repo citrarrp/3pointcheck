@@ -307,6 +307,25 @@ function UpdateForm() {
 
   const [availableCustomers, setAvailableCustomers] = useState([]);
 
+  const formats = [
+    "M/D/YYYY",
+    "D/M/YYYY",
+    "DD/MM/YYYY",
+    "MM/DD/YYYY",
+    "YYYY-MM-DD",
+    "DD-MM-YYYY",
+    "D-M-YYYY",
+    "DD.MM.YYYY",
+    "DD.MM.YY",
+    "D.M.YY",
+    "D.M.YYYY",
+    "MMMM D, YYYY",
+    "D MMMM YYYY",
+    "D MMM YYYY",
+    moment.ISO_8601,
+  ];
+  const [selectedFormat, setSelectedFormat] = useState(formats[0]);
+
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
