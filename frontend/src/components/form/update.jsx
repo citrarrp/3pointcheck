@@ -306,7 +306,6 @@ function UpdateForm() {
   const [dbCustomers, setDbCustomers] = useState([]);
   const [sheetNames, setSheetNames] = useState([]);
   const [selectedSheet, setSelectedSheet] = useState(null);
-  const [showTabel, setShowTabel] = useState(false);
   const [availableCustomers, setAvailableCustomers] = useState([]);
 
   // const formats = [
@@ -506,7 +505,7 @@ function UpdateForm() {
       });
     setExcelHeaders(headers);
     setExcelData(structuredRows);
-    setShowTabel(true);
+    setShowTable(true);
   };
 
   useEffect(() => {
@@ -1178,6 +1177,33 @@ function UpdateForm() {
         />
       </div>
 
+      {sheetNames.length > 0 && (
+        <div className="mb-8 p-6 bg-gray-50 rounded-lg">
+          <label
+            htmlFor="sheet-select"
+            className="block text-lg font-medium text-gray-600 mb-2"
+          >
+            Pilih Sheet:
+          </label>
+          <select
+            id="sheet-select"
+            onChange={(e) => {
+              const name = e.target.value;
+              setSelectedSheet(name);
+              handleSheetSelection(name);
+            }}
+            className="w-full p-3 border-2 border-gray-300 rounded-md focus:ring-blue-400 focus:border-blue-400"
+          >
+            <option value=""> Pilih </option>
+            {sheetNames.map((name, idx) => (
+              <option key={idx} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {fileName && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 p-4">
           {availableCustomers.map((name, idx) => (
@@ -1256,7 +1282,7 @@ function UpdateForm() {
       )} */}
 
       {/* Data Preview */}
-      {showTable && customerList.length > 0 && (
+      {showTable && selectedSheet && customerList.length > 0 && (
         <div className="mb-4">
           <h3 className="font-medium mb-2">Preview Data</h3>
           <div className="max-h-100 overflow-auto border rounded">

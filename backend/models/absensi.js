@@ -22,7 +22,6 @@ const AbsensiSchema = new mongoose.Schema({
   },
   route: {
     type: String,
-    required: true,
   },
   destination: {
     type: String,

@@ -37,10 +37,18 @@ export const getAbsensiQR = async (req, res) => {
     return res.status(400).json({ message: "Data tidak lengkap" });
   }
 
+  console.log(req.body, "sampai sini");
+
   const scanTypeLower = scanType.toLowerCase();
 
-  const startOfDay = moment.utc(selectedDate).startOf("day").toDate();
-  const endOfDay = moment.utc(selectedDate).endOf("day").toDate();
+  const startOfDay = moment
+    .tz(selectedDate, "Asia/Jakarta")
+    .startOf("day")
+    .toDate();
+  const endOfDay = moment
+    .tz(selectedDate, "Asia/Jakarta")
+    .endOf("day")
+    .toDate();
   const currentTime = new Date();
   // const truck = Absensi.find((t) => t.truckName === truckName);
   // if (!truck) {
@@ -49,7 +57,7 @@ export const getAbsensiQR = async (req, res) => {
 
   try {
     const truck = await trucks.findOne({
-      truckName: partnerName,
+      partnerName: partnerName,
       typeTruck: milkrunOrDirect,
       route: route,
       destination: customer,
@@ -59,8 +67,9 @@ export const getAbsensiQR = async (req, res) => {
       return res.status(404).json({ message: "Truck tidak ditemukan" });
     }
 
+    console.log(truck, "ketemu");
     const payload = {
-      truckName: truck.partnerName,
+      partnerName: truck.partnerName,
       route: truck.route,
       destination: truck.destination,
       type: truck.typeTruck,
@@ -75,6 +84,8 @@ export const getAbsensiQR = async (req, res) => {
       tanggal: { $gte: startOfDay, $lt: endOfDay },
     });
 
+    console.log(trackingExists, "Ada");
+
     if (!trackingExists) {
       return res
         .status(404)
@@ -82,7 +93,7 @@ export const getAbsensiQR = async (req, res) => {
     }
 
     let absensiDoc = await Absensi.findOne({
-      truckName,
+      truckName: partnerName,
       customerId: truck.customerId,
       cycleNumber: Number(cycle),
       scanType: scanTypeLower === "out" ? "" : "In",
@@ -92,7 +103,7 @@ export const getAbsensiQR = async (req, res) => {
 
     if (scanTypeLower === "out") {
       const existingInRecord = await Absensi.findOne({
-        truckName,
+        truckName: partnerName,
         customerId: truck.customerId,
         cycleNumber: Number(cycle),
         scanType: "in",
@@ -108,7 +119,7 @@ export const getAbsensiQR = async (req, res) => {
       }
 
       const existingOutRecord = await Absensi.findOne({
-        truckName,
+        truckName: partnerName,
         customerId: truck.customerId,
         cycleNumber: Number(cycle),
         scanType: "out",
@@ -125,7 +136,7 @@ export const getAbsensiQR = async (req, res) => {
 
     if (scanTypeLower === "in") {
       const existingInRecord = await Absensi.findOne({
-        truckName,
+        truckName: partnerName,
         customerId: truck.customerId,
         cycleNumber: Number(cycle),
         scanType: "in",
@@ -248,8 +259,8 @@ export const getAbsensiQR = async (req, res) => {
     // const waktuStandarIn = track.find((c) => c.nama == "Arrived Truck");
     // const waktuStandarOut = track.find((c) => c.nama == "Departure Truck");
 
-    const waktuStandar = moment(tracking.waktu_standar).format("HH:mm");
-    const waktuAktual = moment(currentTime).format("HH:mm");
+    const waktuStandar = moment(trackingExists.waktuStandar);
+    const waktuAktual = moment(currentTime);
     let status, delay;
 
     // const timeDiff =
@@ -276,10 +287,12 @@ export const getAbsensiQR = async (req, res) => {
     //   "minutes"
     // );
 
-    const diffMinutes = moment(waktuAktual, "HH:mm").diff(
-      moment(waktuStandar, "HH:mm"),
-      "minutes"
-    );
+    // const diffMinutes = moment(waktuAktual, "HH:mm").diff(
+    //   moment(waktuStandar, "HH:mm"),
+    //   "minutes"
+    // );
+
+    const diffMinutes = waktuAktual.diff(waktuStandar, "minutes");
 
     if (diffMinutes > 15) {
       delay = `-${diffMinutes} menit`;
@@ -293,15 +306,15 @@ export const getAbsensiQR = async (req, res) => {
     }
 
     const newAbsensi = new Absensi({
-      truckName,
+      truckName: partnerName,
       route,
-      destination,
-      typeTruck: type,
-      scanType,
-      timestamp,
-      createdAt: waktunow,
+      destination: customer,
+      typeTruck: milkrunOrDirect,
+      scanType: scanType,
+      timestamp: timestamp,
+      createdAt: currentTime,
       status,
-      waktuStandar: tracking.waktu_standar,
+      waktuStandar: trackingExists.waktu_standar,
       // nonce: n,
       customerId: truck.customerId,
       //truckCustomerCycle.customerId,
@@ -339,7 +352,7 @@ export const getAbsensiQR = async (req, res) => {
           $lt: endOfDay,
         },
       },
-      { $set: { status, waktuAktual: waktunow, delay, persentase: 100 } }
+      { $set: { status, waktuAktual: currentTime, delay, persentase: 100 } }
     );
     return res.status(200).json({
       success: true,

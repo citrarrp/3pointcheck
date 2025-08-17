@@ -340,13 +340,12 @@ const AbsensiInPage = () => {
       const secret = import.meta.env.VITE_QR_SECRET;
       const hmac = CryptoJS.HmacSHA512(payloadString, secret);
 
-      const data = {
-        ...payload,
-        h: hmac.toString(CryptoJS.enc.Hex),
-        n: CryptoJS.lib.WordArray.random(16).toString(),
-      };
+      // const data = {
+      //   ...payload,
 
-      const res = await api.post("/absensi/qr", data);
+      // };
+
+      const res = await api.post("/absensi/qr", payload);
       if (res.data.success) {
         setStatus("success");
       } else {
