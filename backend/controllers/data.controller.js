@@ -36,7 +36,7 @@ export const getDatabyDate = async (req, res) => {
       return res.status(400).json({ error: "customerId tidak valid" });
     }
 
-    console.log(date, "masuk");
+    // console.log(date, "masuk");
     const test = [
       { $match: { _id: new ObjectId(customer) } },
       { $unwind: "$kolomSelected" },

@@ -304,27 +304,29 @@ function UpdateForm() {
   const [selectedCustomerCol, setSelectedCustomerCol] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [dbCustomers, setDbCustomers] = useState([]);
-
+  const [sheetNames, setSheetNames] = useState([]);
+  const [selectedSheet, setSelectedSheet] = useState(null);
+  const [showTabel, setShowTabel] = useState(false);
   const [availableCustomers, setAvailableCustomers] = useState([]);
 
-  const formats = [
-    "M/D/YYYY",
-    "D/M/YYYY",
-    "DD/MM/YYYY",
-    "MM/DD/YYYY",
-    "YYYY-MM-DD",
-    "DD-MM-YYYY",
-    "D-M-YYYY",
-    "DD.MM.YYYY",
-    "DD.MM.YY",
-    "D.M.YY",
-    "D.M.YYYY",
-    "MMMM D, YYYY",
-    "D MMMM YYYY",
-    "D MMM YYYY",
-    moment.ISO_8601,
-  ];
-  const [selectedFormat, setSelectedFormat] = useState(formats[0]);
+  // const formats = [
+  //   "M/D/YYYY",
+  //   "D/M/YYYY",
+  //   "DD/MM/YYYY",
+  //   "MM/DD/YYYY",
+  //   "YYYY-MM-DD",
+  //   "DD-MM-YYYY",
+  //   "D-M-YYYY",
+  //   "DD.MM.YYYY",
+  //   "DD.MM.YY",
+  //   "D.M.YY",
+  //   "D.M.YYYY",
+  //   "MMMM D, YYYY",
+  //   "D MMMM YYYY",
+  //   "D MMM YYYY",
+  //   moment.ISO_8601,
+  // ];
+  // const [selectedFormat, setSelectedFormat] = useState(formats[0]);
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -428,19 +430,83 @@ function UpdateForm() {
       try {
         const data = e.target.result;
         const workbook = XLSX.read(data, { type: "binary", cellDates: true });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
+        // const sheetName = workbook.SheetNames[0];
+        setSheetNames(workbook.SheetNames); // simpan semua nama sheet
+        setSelectedSheet(null);
 
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        setExcelHeaders(jsonData[0] || []);
-        setExcelData(XLSX.utils.sheet_to_json(worksheet));
-        setShowTable(true);
+        setTimeout(() => {
+          window.__xlsWorkbook = workbook; // kamu bisa juga pakai state kalau tidak pakai global
+        }, 0);
+        // const worksheet = workbook.Sheets[sheetName];
+
+        // const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        // setExcelHeaders(jsonData[0] || []);
+        // setExcelData(XLSX.utils.sheet_to_json(worksheet));
+        // setShowTable(true);
       } catch (error) {
         console.error("Error processing file:", error);
         alert("Invalid file format");
       }
     };
     reader.readAsBinaryString(file);
+  };
+
+  const findHeaderRowIndex = (data) => {
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const isLikelyHeader =
+        row &&
+        row.length > 2 &&
+        row.every((cell) => typeof cell === "string" && cell.trim() !== "");
+
+      if (isLikelyHeader) {
+        return i;
+      }
+    }
+    return 0; // fallback: baris pertama
+  };
+
+  const handleSheetSelection = (sheetName) => {
+    const workbook = window.__xlsWorkbook;
+    if (!workbook) return;
+
+    const sheet = workbook.Sheets[sheetName];
+    const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+    const headerRowIndex = findHeaderRowIndex(rawData);
+
+    if (headerRowIndex === -1) return;
+
+    const rawHeaders = rawData[headerRowIndex];
+    const rows = rawData.slice(headerRowIndex + 1);
+
+    const seen = {};
+    const headers = rawHeaders.map((header) => {
+      let cleanHeader = String(header || "Column").trim();
+      if (seen[cleanHeader]) {
+        const count = seen[cleanHeader]++;
+        cleanHeader = `${cleanHeader} ${count}`;
+      } else {
+        seen[cleanHeader] = 1;
+      }
+      return cleanHeader;
+    });
+
+    console.log(headers, "conoth banyak");
+
+    const structuredRows = rows
+      .filter((row) =>
+        headers.some((_, idx) => row[idx] !== undefined && row[idx] !== null)
+      )
+      .map((row) => {
+        const obj = {};
+        headers.forEach((header, idx) => {
+          obj[header] = row[idx];
+        });
+        return obj;
+      });
+    setExcelHeaders(headers);
+    setExcelData(structuredRows);
+    setShowTabel(true);
   };
 
   useEffect(() => {
