@@ -1,0 +1,11 @@
+{
+  "apps": [
+    {
+      "name": "backend",
+      "script": "index.js",
+      "env": {
+        "PORT": "5000"
+      }
+    }
+  ]
+}

@@ -269,7 +269,7 @@ export default function HistoryPage() {
                   rowSpan={2}
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Rute
+                  Cycle
                 </th>
                 <th
                   rowSpan={2}
@@ -335,46 +335,46 @@ export default function HistoryPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {inScan ? formatDate(inScan.createdAt) : ""}
+                        {inScan ? formatDate(inScan?.createdAt) : ""}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {inScan ? datetoUTCtoLocal(inScan.waktuStandar) : ""}
+                        {inScan ? datetoUTCtoLocal(inScan?.waktuStandar) : ""}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {inScan ? formatTime(inScan.createdAt) : ""}
+                        {inScan ? formatTime(inScan?.createdAt) : ""}
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap">
                         {inScan && (
                           <span
                             className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
-                              inScan.status
+                              inScan?.status
                             )}`}
                           >
-                            {inScan.status}
+                            {inScan?.status}
                           </span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {outScan ? datetoUTCtoLocal(outScan.waktuStandar) : ""}
+                        {outScan ? datetoUTCtoLocal(outScan?.waktuStandar) : ""}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {outScan ? formatTime(outScan.createdAt) : ""}
+                        {outScan ? formatTime(outScan?.createdAt) : ""}
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap">
                         {outScan && (
                           <span
                             className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
-                              outScan.status
+                              outScan?.status
                             )}`}
                           >
-                            {outScan.status}
+                            {outScan?.status}
                           </span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {inScan?.route || outScan?.route || ""}
+                        C{inScan?.cycleNumber || outScan?.cycleNumber || ""}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {inScan?.destination || outScan?.destination || ""}
@@ -383,8 +383,8 @@ export default function HistoryPage() {
                         {inScan?.typeTruck || outScan?.typeTruck || ""}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {(outScan && outScan.status === "On Time") ||
-                        outScan.status === "Advanced" ? (
+                        {(outScan && outScan?.status === "On Time") ||
+                        outScan?.status === "Advanced" ? (
                           <span
                             className={
                               "inline-flex text-[13px] leading-5 font-semibold bg-green-500 rounded-xl w-[80px] p-1 justify-center text-white"

@@ -29,7 +29,7 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
   const [isConnected, setIsConnected] = useState(false);
 
   const [tag, setTag] = useState([]);
-  
+
   const checkProsesSekarang = async () => {
     const now = moment();
     return shiftOptions.find((item) => {
@@ -255,23 +255,23 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
   };
 
   const handlePrintUniversal = async ({ paperSize = "58mm" } = {}) => {
-    const paperWidth = paperSize === "58mm" ? 384 : 576;
+    const paperWidth = paperSize === "58mm" ? 3650 : 3650;
 
     if (!printDiv.current) {
       console.warn("printDiv ref tidak ditemukan!");
       return;
     }
 
-    let canvas = await html2canvas(printDiv.current, { scale: 1.5 });
+    let canvas = await html2canvas(printDiv.current, { scale: 2 });
     try {
-      let rowCanvas = await html2canvas(printDiv.current, { scale: 2 });
+      let rowCanvas = await html2canvas(printDiv.current, { scale: 2.5 });
       const processedCanvas = transformCanvasForPrint(
         rowCanvas,
         paperWidth,
         true
       );
 
-      const dataUrl = processedCanvas.toDataURL("image/png", 1.0);
+      const dataUrl = processedCanvas.toDataURL("image/png", 2.0);
 
       const connectIminWithTimeout = (timeoutMs = 2000) => {
         return new Promise((resolve, reject) => {
@@ -333,10 +333,11 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
 
           setPrintStatus("Terhubung ke iMin, memulai print...");
           imin.initPrinter();
-          imin.printText(
-            'iMin advocates the core values of "Integrity, Customer First, Invention&Creation, Patience”, using cloud-based technology to help businesses to get access to the Internet and also increases their data base, by providing more solutions so that their business can take a step further. Through their efficiency enhancement, cost improvement, service innovation, and better services for consumers, these aspect will drives the entire industry development.'
-          );
-          imin.printSingleBitmap(dataUrl, 1);
+          // imin.printText(
+          //   'iMin advocates the core values of "Integrity, Customer First, Invention&Creation, Patience”, using cloud-based technology to help businesses to get access to the Internet and also increases their data base, by providing more solutions so that their business can take a step further. Through their efficiency enhancement, cost improvement, service innovation, and better services for consumers, these aspect will drives the entire industry development.'
+          // );
+          imin.printSingleBitmap(dataUrl);
+          imin.printAndFeedPaper(5);
           if (typeof imin.partialCut === "function") imin.partialCut();
 
           setPrintStatus("Cetak iMin selesai");
@@ -592,9 +593,10 @@ const CetakTag = ({ dataAsli, data, lineAt, code, customer }) => {
               </div>
             </div>
 
-            <div className="flex flex-col justify-between items-center">
+            <div className="flex flex-col justify-between items-center ml-50">
               <div
                 ref={printDiv}
+                className="h-full"
                 // className="border border-gray-200 rounded-lg p-4 bg-gray-50"
               >
                 {tableComponent}

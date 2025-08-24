@@ -279,6 +279,13 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
+// app.use(express.static(path.join(__dirname, 'dist')));
+
+// // Untuk menangani routing di aplikasi SPA (Single Page Application)
+// app.get('*', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+// });
+
 const db = async () => {
   try {
     const conn = await mongoose.connect(process.env.MONGO_URL);

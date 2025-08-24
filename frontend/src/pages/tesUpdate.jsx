@@ -1,291 +1,3 @@
-// import { useState, useEffect } from "react";
-// import * as XLSX from "xlsx";
-// import moment from "moment-timezone";
-
-// function UpdateForm({ customerId, onClose }) {
-//   const [fileName, setFileName] = useState("");
-//   const [excelHeaders, setExcelHeaders] = useState([]);
-//   const [excelData, setExcelData] = useState([]);
-//   const [existingData, setExistingData] = useState(null);
-//   const [mapping, setMapping] = useState({});
-//   const [selectedColumns, setSelectedColumns] = useState([]);
-//   const [showTable, setShowTable] = useState(false);
-
-//   // Fetch existing data to get sourceLabel and separator
-//   useEffect(() => {
-//     const fetchExistingData = async () => {
-//       try {
-//         const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/data/${customerId}`);
-//         const data = await res.json();
-//         setExistingData(data);
-
-//         // Auto-map based on sourceLabel if available
-//         if (data.sourceLabel) {
-//           const autoMapping = {};
-//           Object.entries(data.sourceLabel).forEach(([schema, excelCol]) => {
-//             autoMapping[schema] = excelCol;
-//           });
-//           setMapping(autoMapping);
-//         }
-
-//         // Auto-select columns for unique code if selectedData exists
-//         if (data.selectedData && data.selectedData.length > 0) {
-//           // Ini perlu disesuaikan dengan logika Anda untuk menentukan kolom yang dipilih
-//           // Contoh sederhana - ambil dari mapping pertama
-//           if (data.sourceLabel) {
-//             const firstMappedCol = Object.values(data.sourceLabel)[0];
-//             if (firstMappedCol) {
-//               setSelectedColumns([firstMappedCol]);
-//             }
-//           }
-//         }
-//       } catch (err) {
-//         console.error("Failed to fetch existing data:", err);
-//       }
-//     };
-
-//     if (customerId) {
-//       fetchExistingData();
-//     }
-//   }, [customerId]);
-
-//   const handleFileUpload = (event) => {
-//     const file = event.target.files[0];
-//     if (!file) return;
-
-//     const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf("."));
-//     setFileName(nameWithoutExt);
-
-//     const customers = nameWithoutExt.split("&").map(name => name.trim());
-
-//     const reader = new FileReader();
-//     reader.onload = (e) => {
-//       const data = e.target.result;
-//       const sheets = XLSX.read(data, { type: "binary", cellDates: true });
-
-//       const sheetName = sheets.SheetNames[0];
-//       const sheet = sheets.Sheets[sheetName];
-
-//       const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-//       const columns = jsonData[0];
-//       const rows = XLSX.utils.sheet_to_json(sheet);
-
-//       setExcelHeaders(columns);
-//       setExcelData(rows);
-//       setShowTable(true);
-//     };
-//     reader.readAsBinaryString(file);
-//   };
-
-//   const extractColon = (str) => {
-//     if (typeof str !== "string") return str;
-//     return str.includes(":") ? str.split(":").slice(1).join(":").trim() : str;
-//   };
-
-//   const handleUpdate = async () => {
-//     if (!existingData) return;
-
-//     try {
-//       const formatValue = (val) => {
-//         if (val instanceof Date && !isNaN(val)) {
-//           return moment(val).tz("Asia/Jakarta").format("DDMMYYYY");
-//         }
-
-//         const parsedDate = moment.tz(
-//           val,
-//           ["DD/MM/YYYY", "YYYY-MM-DD", moment.ISO_8601],
-//           true,
-//           "Asia/Jakarta"
-//         );
-//         if (parsedDate.isValid()) {
-//           return parsedDate.format("DDMMYYYY");
-//         }
-//         return val ?? "";
-//       };
-
-//       // Prepare selectedData (kode unik) menggunakan separator dari data existing
-//       const selectedData = excelData.map((row) =>
-//         selectedColumns
-//           .map((col) => formatValue(row[col]))
-//           .map((value) => extractColon(value))
-//           .join(existingData.separator || "-") // Gunakan separator dari data existing
-//       );
-
-//       // Prepare kolomSelected data
-//       const kolomSelected = excelData.map((row) =>
-//         Object.entries(mapping).reduce((mappedRow, [schema, excelCol]) => {
-//           let val = row[excelCol] ?? null;
-//           if (typeof val === "string" && val.includes(":")) {
-//             val = val.split(":")[1]?.trim() ?? val;
-//           }
-//           mappedRow[schema] = extractColon(val);
-//           return mappedRow;
-//         }, {})
-//       );
-
-//       const payload = {
-//         kolomSelected,
-//         selectedData
-//       };
-
-//       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/data/${customerId}`, {
-//         method: "PATCH",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify(payload),
-//       });
-
-//       const result = await res.json();
-//       if (result.success) {
-//         alert("Data berhasil diupdate!");
-//         onClose();
-//       } else {
-//         alert("Gagal update data: " + result.message);
-//       }
-//     } catch (err) {
-//       console.error("Update error:", err);
-//       alert("Error updating data");
-//     }
-//   };
-
-//   return (
-//     <div className="p-4 bg-white rounded-lg shadow-lg max-w-3xl mx-auto">
-//       <h2 className="text-xl font-bold mb-4">Update Data Customer</h2>
-
-//       <div className="mb-4">
-//         <label className="block mb-2 font-medium">Upload File Excel Baru</label>
-//         <input
-//           type="file"
-//           className="block w-full text-sm text-gray-500
-//             file:mr-4 file:py-2 file:px-4
-//             file:rounded-md file:border-0
-//             file:text-sm file:font-semibold
-//             file:bg-blue-50 file:text-blue-700
-//             hover:file:bg-blue-100"
-//           onChange={handleFileUpload}
-//           accept=".xlsx, .xls"
-//         />
-//       </div>
-
-//       {existingData && (
-//         <div className="mb-4 p-3 bg-gray-50 rounded">
-//           <h3 className="font-medium mb-2">Informasi Data Sebelumnya</h3>
-//           <p><span className="font-semibold">Separator:</span> {existingData.separator || "-"}</p>
-//           <p><span className="font-semibold">Kolom Terpilih:</span> {selectedColumns.join(", ") || "Belum dipilih"}</p>
-//         </div>
-//       )}
-
-//       {existingData && showTable && (
-//         <div className="mb-4">
-//           <h3 className="font-medium mb-2">Mapping Kolom</h3>
-//           <p className="text-sm text-gray-600 mb-3">
-//             Sesuaikan mapping kolom antara data baru dengan struktur data yang ada
-//           </p>
-//           {Object.entries(existingData.sourceLabel || {}).map(([schema, excelCol], idx) => (
-//             <div key={idx} className="mb-2">
-//               <label className="block mb-1 text-sm font-medium">{schema}</label>
-//               <select
-//                 className="w-full p-2 border rounded text-sm"
-//                 value={mapping[schema] || ""}
-//                 onChange={(e) =>
-//                   setMapping((prev) => ({
-//                     ...prev,
-//                     [schema]: e.target.value,
-//                   }))
-//                 }
-//               >
-//                 <option value="">Pilih Kolom Baru</option>
-//                 {excelHeaders.map((col, i) => (
-//                   <option key={i} value={col}>
-//                     {col} {col === excelCol && "(Sebelumnya: " + excelCol + ")"}
-//                   </option>
-//                 ))}
-//               </select>
-//             </div>
-//           ))}
-//         </div>
-//       )}
-
-//       {showTable && (
-//         <>
-//           <div className="mb-4">
-//             <h3 className="font-medium mb-2">Pilih Kolom untuk Kode Unik</h3>
-//             <p className="text-sm text-gray-600 mb-3">
-//               Pilih kolom yang akan digabungkan menjadi kode unik (menggunakan separator: <span className="font-semibold">{existingData?.separator || "-"}</span>)
-//             </p>
-//             <div className="flex flex-wrap gap-3">
-//               {excelHeaders.map((col, idx) => (
-//                 <label key={idx} className="flex items-center gap-2 text-sm">
-//                   <input
-//                     type="checkbox"
-//                     checked={selectedColumns.includes(col)}
-//                     onChange={() =>
-//                       setSelectedColumns(prev =>
-//                         prev.includes(col)
-//                           ? prev.filter(c => c !== col)
-//                           : [...prev, col]
-//                       )
-//                     }
-//                   />
-//                   <span>{col}</span>
-//                 </label>
-//               ))}
-//             </div>
-//           </div>
-
-//           <div className="max-h-60 overflow-auto mb-4 border rounded">
-//             <table className="min-w-full">
-//               <thead className="bg-gray-50">
-//                 <tr>
-//                   <th className="px-4 py-2 border text-left text-sm">No</th>
-//                   {excelHeaders.map((header, idx) => (
-//                     <th key={idx} className="px-4 py-2 border text-left text-sm">
-//                       {header}
-//                     </th>
-//                   ))}
-//                 </tr>
-//               </thead>
-//               <tbody>
-//                 {excelData.slice(0, 5).map((row, index) => (
-//                   <tr key={index} className="hover:bg-gray-50">
-//                     <td className="px-4 py-2 border text-sm">{index + 1}</td>
-//                     {excelHeaders.map((header, colIndex) => (
-//                       <td key={colIndex} className="px-4 py-2 border text-sm">
-//                         {row[header]?.toString() || ""}
-//                       </td>
-//                     ))}
-//                   </tr>
-//                 ))}
-//               </tbody>
-//             </table>
-//             {excelData.length > 5 && (
-//               <div className="text-center py-2 text-sm text-gray-500 bg-gray-50">
-//                 Menampilkan 5 dari {excelData.length} baris
-//               </div>
-//             )}
-//           </div>
-//         </>
-//       )}
-
-//       <div className="flex justify-end gap-2 mt-4">
-//         <button
-//           onClick={onClose}
-//           className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 text-sm"
-//         >
-//           Batal
-//         </button>
-//         <button
-//           onClick={handleUpdate}
-//           disabled={!excelData.length || !selectedColumns.length}
-//           className="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 disabled:bg-blue-300 text-sm"
-//         >
-//           Update Data
-//         </button>
-//       </div>
-//     </div>
-//   );
-// }
-
-// export default UpdateForm;
 import { useState, useEffect, useMemo } from "react";
 import * as XLSX from "xlsx";
 import moment from "moment-timezone";
@@ -308,112 +20,6 @@ function UpdateForm() {
   const [selectedSheet, setSelectedSheet] = useState(null);
   const [availableCustomers, setAvailableCustomers] = useState([]);
   const [SOD, setSOD] = useState([]);
-  const [startSearch, setStartSearch] = useState(false);
-
-  // const formats = [
-  //   "M/D/YYYY",
-  //   "D/M/YYYY",
-  //   "DD/MM/YYYY",
-  //   "MM/DD/YYYY",
-  //   "YYYY-MM-DD",
-  //   "DD-MM-YYYY",
-  //   "D-M-YYYY",
-  //   "DD.MM.YYYY",
-  //   "DD.MM.YY",
-  //   "D.M.YY",
-  //   "D.M.YYYY",
-  //   "MMMM D, YYYY",
-  //   "D MMMM YYYY",
-  //   "D MMM YYYY",
-  //   moment.ISO_8601,
-  // ];
-  // const [selectedFormat, setSelectedFormat] = useState(formats[0]);
-
-  useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const result = await api.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/data/selectedCust/db`
-        );
-
-        if (result.data.success) {
-          console.log(result.data.data);
-          setDbCustomers(result.data.data);
-        }
-      } catch (err) {
-        console.error("Gagal fetch customer dari DB", err);
-      }
-    };
-    fetchCustomers();
-  }, []);
-
-  useEffect(() => {
-    const fetchExistingData = async () => {
-      console.log("disini customer", customerList);
-      if (customerList.length === 0) return;
-      setIsLoading(true);
-      // console.log(customerList, "baru");
-      try {
-        if (customerList.length === 1) {
-          const { data } = await api.get(
-            `${
-              import.meta.env.VITE_BACKEND_URL
-            }/api/data/customer/${encodeURIComponent(customerList[0])}`
-          );
-          console.log(data, "ini customer");
-
-          setExistingCustomersData(data);
-
-          if (data?.success) {
-            setMapping(data.data.sourceValueLabel || {});
-            setSelectedColumns(data.data.selectedColumns || []);
-          }
-        } else {
-          const promises = customerList.map(async (customer) => {
-            const { data } = await api.get(
-              `${
-                import.meta.env.VITE_BACKEND_URL
-              }/api/data/customer/${encodeURIComponent(customer)}`
-            );
-            return data;
-          });
-
-          const results = await Promise.all(promises);
-          setExistingCustomersData(results);
-          console.log(results, "apa isi hasol");
-
-          if (results[0]?.success) {
-            setMapping(results[0].data.sourceValueLabel || {});
-            setSelectedColumns(results[0].data.selectedColumns || []);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch existing data:", err);
-        alert("Data customer tidak ada!");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchExistingData();
-  }, [customerList]);
-
-  const fetchSODDiagram = async () => {
-    try {
-      const response = await axios.get(
-        "http://192.168.56.1:3000/sodDiagram/api/sod/",
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      return response.data.data;
-    } catch (err) {
-      console.error("Failed to fetch SOD Diagram:", err);
-      return null;
-    }
-  };
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -422,28 +28,18 @@ function UpdateForm() {
     const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf("."));
     setFileName(nameWithoutExt);
 
-    // const customers = nameWithoutExt.split("&").map((name) => name.trim());
-    // setCustomerList(customers);
-    // console.log(customers);
-
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const data = e.target.result;
         const workbook = XLSX.read(data, { type: "binary", cellDates: true });
-        // const sheetName = workbook.SheetNames[0];
         setSheetNames(workbook.SheetNames); // simpan semua nama sheet
         setSelectedSheet(null);
 
         setTimeout(() => {
           window.__xlsWorkbook = workbook; // kamu bisa juga pakai state kalau tidak pakai global
         }, 0);
-        // const worksheet = workbook.Sheets[sheetName];
-
-        // const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        // setExcelHeaders(jsonData[0] || []);
-        // setExcelData(XLSX.utils.sheet_to_json(worksheet));
-        // setShowTable(true);
+    
       } catch (error) {
         console.error("Error processing file:", error);
         alert("Invalid file format");
@@ -594,16 +190,13 @@ function UpdateForm() {
     return timeRaw;
   }
 
-  function waktuWIBToUTCISOString(timeStrWIB) {
-    // Misal: timeStrWIB = "07:52:00"
+  function waktuWIBToUTCISOString(timeStrWIB) { // Misal: timeStrWIB = "07:52:00"
     if (!(timeStrWIB instanceof Date)) timeStrWIB = new Date(timeStrWIB);
     if (isNaN(timeStrWIB)) return null;
 
     const hours = timeStrWIB.getHours().toString().padStart(2, "0");
     const minutes = timeStrWIB.getMinutes().toString().padStart(2, "0");
-    const seconds = timeStrWIB.getSeconds().toString().padStart(2, "0");
-
-    // const [hh, mm, ss] = timeStrWIB.split(":").map(Number);
+    const seconds = timeStrWIB.getSeconds().toString().padStart(2, "0"); // const [hh, mm, ss] = timeStrWIB.split(":").map(Number);
     const date = new Date(Date.UTC(1970, 0, 1, hours, minutes, seconds || 0)); // 07:52 UTC
 
     date.setUTCHours(date.getUTCHours() - 7);
@@ -622,7 +215,6 @@ function UpdateForm() {
   }
 
   const findCustomerFromCode = (val, SODDiagram) => {
-    console.log(SODDiagram, "disini afa item");
     // Mencari kode customer di dataSODDiagram dan mendapatkan nama
     const customerFromCode = SODDiagram.find((item) => {
       const cleanedKode = item.kodeCustomer.toLowerCase();
@@ -671,36 +263,20 @@ function UpdateForm() {
     return null; // Kode customer tidak ditemukan
   };
 
-  const matchCustomerWithDB = (customerName, customers) => {
-    // Normalisasi nama customer yang akan dicocokkan
+  const matchCustomerWithDB = (customerName, dbCustomers) => {
     const normalizedCustomerName = normalize(customerName).toLowerCase();
-    // Cari customer di dbCustomers yang cocok dengan nama yang ditemukan di dataSODDiagram
-    return customers.find((cust) =>
+    return dbCustomers.find((cust) =>
       normalize(cust.nama).toLowerCase().includes(normalizedCustomerName)
     );
   };
 
-  const processMatching = (val, SODDiagram, customers) => {
-    if (!val) return null;
-
-    const directMatch = customers.find(
-      (cust) =>
-        normalize(cust.nama).toLowerCase() === normalize(val).toLowerCase()
-    );
-    if (directMatch) {
-      console.log("Langsung match nama:", directMatch.nama);
-      return directMatch;
-    }
-
-    const customerName = findCustomerFromCode(val, SODDiagram);
-
+  const processMatching = (val, SODDiagram, dbCustomers) => {
+    let customerName = findCustomerFromCode(val, SODDiagram);
     if (!customerName) {
-      return null;
+      return;
     }
-
     // Cari customer berdasarkan nama yang ditemukan di dataSODDiagram
-    const matchedCustomer = matchCustomerWithDB(customerName, customers);
-
+    const matchedCustomer = matchCustomerWithDB(customerName, dbCustomers);
     if (matchedCustomer) {
       console.log("Customer ditemukan di dbCustomers:", matchedCustomer);
       return matchedCustomer;
@@ -731,14 +307,7 @@ function UpdateForm() {
         const SODDiagramTime = new Date(waktuUntukSubmit);
 
         const SODDiagramSeconds = getSecondsSinceMidnight(SODDiagramTime);
-        console.log(
-          waktuUntukSubmit,
-          SODDiagramTime,
-          SODDiagramSeconds,
-          "INI SEMUA PENTINH",
-          targetTime,
-          deliveryTime
-        );
+     
         if (SODDiagramSeconds <= targetSeconds) {
           const diff = Math.abs(targetSeconds - SODDiagramSeconds);
           if (!closest || diff < closest.diff) {
@@ -749,147 +318,54 @@ function UpdateForm() {
     return closest?.cycle ?? 1;
   }
 
-  const handleSearch = () => {
+  useEffect(() => {
+    console.log("keisi", excelData, dbCustomers);
+    if (excelData.length === 0 || dbCustomers.length === 0) return;
+
     let detectedCol = null;
     const matchedCustomers = new Set();
+    // if (!SOD || SOD.length === 0) return;
 
-    const customerSelect = dbCustomers.filter((item) =>
-      customerList.includes(item?.nama)
-    );
+    dbCustomers.forEach((item) => {
+      const col = item.selectedCustomer;
+      if (!col) return;
 
-    console.log(customerSelect, customerList, "Data naru");
+      console.log(col, item, "db customer", SOD);
+      const namaCust = normalize(item.nama);
 
-    const filteredSOD = SOD.filter((item) =>
-      customerList.includes(item?.customerName)
-    );
+      const isColExist = excelData.some((row) => row[col] !== undefined);
 
-    excelData.forEach((row) => {
-      customerSelect.forEach((cust) => {
-        const col = cust.selectedCustomer;
-        if (!col || !row[col]) return;
-
-        const matched = processMatching(row[col], filteredSOD, customerSelect);
-        if (matched) {
-          matchedCustomers.add(matched.nama);
-          detectedCol = col;
-        }
+      if (!isColExist) return; // skip kalau kolomnya ga ada
+      const matchedRows = excelData.filter((row) => {
+        const val = row[col];
+        return val && processMatching(val, SOD, dbCustomers); // Panggil processMatching sekali untuk setiap row
       });
-    });
 
+      if (matchedRows.length > 0) {
+        detectedCol = col;
+        console.log(col);
+
+        excelData.forEach((row, i) => {
+          // console.log(`Row ${i}:`, row);
+          const val = row[col];
+          if (!val) return;
+          matchedRows.forEach((row) => {
+            const val = row[col];
+            dbCustomers.forEach((cust) => {
+              if (processMatching(val, SOD, dbCustomers)) {
+                console.log(cust, val, "ada kah");
+                matchedCustomers.add(cust.nama);
+              }
+            });
+          });
+        });
+      }
+    });
     if (detectedCol) {
       setSelectedCustomerCol(detectedCol);
       setCustomerList(Array.from(matchedCustomers));
     }
-  };
-
-  // useEffect(() => {
-  //   console.log("keisi", excelData, dbCustomers);
-  //   if (
-  //     excelData.length === 0 ||
-  //     dbCustomers.length === 0 ||
-  //     customerList.length === 0
-  //   )
-  //     return;
-
-  //   if (!startSearch) return;
-  //   let detectedCol = null;
-  //   const matchedCustomers = new Set();
-  //   // if (!SOD || SOD.length === 0) return;
-
-  //   const customerSelect = dbCustomers.filter((item) =>
-  //     customerList.includes(item?.nama)
-  //   );
-
-  //   console.log(customerSelect, customerList, "Data naru");
-
-  //   const filteredSOD = SOD.filter((item) =>
-  //     customerList.includes(item?.customerName)
-  //   );
-  //   // customerSelect.forEach((item) => {
-  //   //   const col = item.selectedCustomer;
-  //   //   if (!col) return;
-
-  //   //   console.log(col, item, "db customer", SOD);
-  //   //   const isColExist = excelData.some((row) => row[col] !== undefined);
-  //   //   if (!isColExist) return; // skip kalau kolomnya ga ada
-
-  //   // const hasMatch = excelData.some((row) => {
-  //   //   const val = row[col];
-
-  //   //   console.log(val, "isi baild", SOD);
-  //   //   return (
-  //   //     // normalize(val)?.includes(namaCust) ||
-  //   //     // namaCust.includes(normalize(val))
-  //   //     processMatching(val, SOD, dbCustomers)
-  //   //   );
-  //   // });
-
-  //   // const matchedRows = excelData.filter((row) => {
-  //   //   const val = row[col];
-  //   //   return val && processMatching(val, SOD, customerSelect); // Panggil processMatching sekali untuk setiap row
-  //   // });
-
-  //   // if (matchedRows.length > 0) {
-  //   // detectedCol = col;
-  //   // excelData.forEach((row, i) => {
-  //   //   // console.log(`Row ${i}:`, row);
-  //   //   const val = row[col];
-  //   //   if (!val) return;
-
-  //   // dbCustomers.forEach((cust) => {
-  //   //   const name = normalize(cust.nama);
-  //   //   console.log(val, name, "sama ga");
-  //   //   if (
-  //   //     // normalize(val).includes(name) ||
-  //   //     // name.includes(normalize(val))
-  //   //     processMatching(val, SOD, dbCustomers)
-  //   //   ) {
-  //   //     console.log(cust.nama, val, "cekaa");
-  //   //     matchedCustomers.add(cust.nama);
-  //   //   }
-  //   // });
-
-  //   //       const matched = processMatching(val, SOD, customerSelect);
-  //   //       if (matched) {
-  //   //         matchedCustomers.add(matched.nama);
-  //   //       }
-  //   //     });
-  //   //   // }
-  //   // });
-  //   // if (detectedCol) {
-  //   //   console.log("ini contoh");
-  //   //   setSelectedCustomerCol(detectedCol);
-  //   //   // setCustomerList(Array.from(matchedCustomers));
-  //   // }
-  //   excelData
-  //     .filter((row) =>
-  //       customerSelect.some(
-  //         (cust) =>
-  //           cust.selectedCustomer && row[cust.selectedCustomer] !== undefined
-  //       )
-  //     )
-  //     .forEach((row) => {
-  //       customerSelect.forEach((cust) => {
-  //         const col = cust.selectedCustomer;
-  //         if (!col) return;
-
-  //         const val = row[col];
-  //         if (!val) return;
-
-  //         const matched = processMatching(val, filteredSOD, customerSelect);
-  //         if (matched) {
-  //           matchedCustomers.add(matched.nama);
-  //         }
-
-  //         detectedCol = col;
-  //       });
-  //     });
-
-  //   if (detectedCol) {
-  //     setSelectedCustomerCol(detectedCol);
-  //   }
-  //   setStartSearch(!startSearch);
-  // }, [excelData, dbCustomers, SOD, customerList, startSearch]);
+  }, [excelData, dbCustomers, SOD]);
 
   const filterData = useMemo(() => {
     if (!excelData && !selectedCustomerCol) return;
@@ -907,11 +383,6 @@ function UpdateForm() {
   }, [excelData, selectedCustomerCol, dbCustomers, filterData]);
 
   const handleUpdate = async () => {
-    console.log(
-      "bisa update ga",
-      typeof existingCustomersData,
-      typeof excelData
-    );
     if (
       !Array.isArray(excelData) ||
       !existingCustomersData ||
@@ -927,9 +398,6 @@ function UpdateForm() {
           return moment(val).tz("Asia/Jakarta");
         }
 
-        // const trimmedVal = typeof val === "string" ? val.trim() : val;
-
-        // console.log(trimmedVal, "edit");
         const parsedDate = moment.tz(
           val,
           [
@@ -982,22 +450,6 @@ function UpdateForm() {
         } else {
           const separator = customerData.data.separator;
 
-          // const selectedData = excelData.map((row) => {
-          //   const values = selectedColumns
-          //     .map((col) => formatValue(row[col]))
-          //     .map((val) => extractColon(val));
-          //   return values.join(separator ?? "");
-          // });
-
-          // const selectedData = excelData.map((row) => {
-          //   console.log("kesini", selectedColumns);
-          //   const values = selectedColumns
-          //     .filter((_, index) => index !== 0) // ambil index genap
-          //     .map((col) => formatValue(row[col]))
-          //     .map((val) => extractColon(val));
-
-          //   return values.join(separator ?? "");
-          // });
           const selectedData = excelData.map((row) => {
             console.log("kesini", selectedColumns);
 
@@ -1124,21 +576,11 @@ function UpdateForm() {
           }
         }
       } else {
-        console.log("Data sod", dataSODDiagram);
         const updatePromises = customerList.map(async (customer, index) => {
           const stepCycle = dataSODDiagram.filter((item) =>
             item.customerName.includes(customer)
           );
-          // console.log(
-          //   dataSODDiagram.filter((item) => item.customerName.includes(customer))
-          // );
-
-          console.log(
-            existingCustomersData ? existingCustomersData : 0,
-            "data customer",
-            customerList
-          );
-
+        
           const customerData = existingCustomersData.find((c) =>
             c.data.nama.toLowerCase().includes(customer.toLowerCase())
           );
@@ -1150,78 +592,33 @@ function UpdateForm() {
             };
           }
 
-          console.log(
-            existingCustomersData,
-            customer,
-            selectedCustomerCol,
-            "data ad"
-          );
-
-          const filtered = excelData.filter((row) => {
-            return (
-              row[selectedCustomerCol] &&
-              String(row[selectedCustomerCol]).trim() !== ""
-            );
-          });
+          console.log(existingCustomersData, customer, "data ad");
 
           const filteredData = excelData.filter((row) => {
             const customerFieldValue = row[selectedCustomerCol];
             console.log(customerFieldValue, "field cust");
-            if (!customerFieldValue) return false;
+            if (!customerFieldValue) return;
 
-            // console.log("disini");
-            // const normalized = normalize(
-            //   customerFieldValue.toString().toLowerCase()
-            // );
-
-            // return (
-            //   normalized.includes(customer.toLowerCase()) ||
-            //   normalized.replace(/-/g, " ").includes(customer.toLowerCase()) ||
-            //   customer
-            //     .toLowerCase()
-            //     .includes(normalized.replace(/-/g, " ").toLowerCase()) ||
-            //   customer
-            //     .toLowerCase()
-            //     .replace(/\s/g, "")
-            //     .includes(normalized.replace(/-/g, "").toLowerCase())
-            // );
-            const matched = processMatching(
-              customerFieldValue,
-              SOD.filter((item) => customerList.includes(item.customerName)),
-              dbCustomers.filter((c) => customerList.includes(c.nama))
+            console.log("disini");
+            const normalized = normalize(
+              customerFieldValue.toString().toLowerCase()
             );
 
-            console.log(matched, customer);
-
-            return !!matched;
+            return (
+              normalized.includes(customer.toLowerCase()) ||
+              normalized.replace(/-/g, " ").includes(customer.toLowerCase()) ||
+              customer
+                .toLowerCase()
+                .includes(normalized.replace(/-/g, " ").toLowerCase()) ||
+              customer
+                .toLowerCase()
+                .replace(/\s/g, "")
+                .includes(normalized.replace(/-/g, "").toLowerCase())
+            );
           });
 
           const separator = customerData.data.separator;
 
-          // const selectedData = filteredData.map((row) =>
-
-          //   selectedColumns
-          //     .map((col) => formatValue(row[col]))
-          //     .map((val) => extractColon(val))
-          //     .join(separator)
-          // );
-
-          // const selectedData = filteredData.map((row) => {
-          //   const values = selectedColumns
-          //     .map((col) => formatValue(row[col]))
-          //     .map((val) => extractColon(val));
-
-          //   return values.join(separator ?? ""); // join("") gabung tanpa spasi
-          // });
-
-          // const selectedData = filteredData.map((row) => {
-          //   const values = selectedColumns
-          //     .filter((_, index) => index % 2 !== 0) // ambil index genap
-          //     .map((col) => formatValue(row[col]))
-          //     .map((val) => extractColon(val));
-
-          //   return values.join(separator ?? "");
-          // });
 
           const selectedData = filteredData.map((row) => {
             console.log("kesini", selectedColumns);
@@ -1250,16 +647,6 @@ function UpdateForm() {
           });
 
           console.log(selectedData, filteredData, "ini dikirim");
-
-          // const selectedData = filteredData.map((row) =>
-          //   selectedColumns
-          //     .map((col) => {
-          //       const val = formatValue(row[col]);
-          //       return separator !== "" ? extractColon(val) : val;
-          //     })
-          //     .join(separator)
-          // );
-
           const KolomSelected = filteredData.map((row) =>
             Object.entries(mapping).reduce((acc, [schema, excelCol]) => {
               if (!Object.hasOwn(mapping, "delivery_cycle")) {
@@ -1297,15 +684,6 @@ function UpdateForm() {
           const today = new Date();
           const tomorrow = new Date(today);
           tomorrow.setDate(today.getDate() + 1);
-
-          // console.log(
-          //   KolomSelected,
-          //   typeof KolomSelected,
-
-          //   "apa kai",
-          //   mapping
-          // );
-
           const payload = {
             kolomSelected: {
               data: KolomSelected,
@@ -1521,6 +899,7 @@ function UpdateForm() {
           </div>
         </div>
       )}
+
       <div className="flex justify-end gap-2 mt-4">
         {/* <button
           className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300 text-sm"
@@ -1528,13 +907,6 @@ function UpdateForm() {
         >
           Batal
         </button> */}
-        <button
-          onClick={handleSearch}
-          disabled={excelData.length === 0 || customerList.length < 1}
-          className="px-4 py-2 text-white bg-emerald-600 rounded hover:bg-emerald-700 disabled:bg-emerald-300 text-sm"
-        >
-          Search
-        </button>
         <button
           onClick={handleUpdate}
           disabled={
